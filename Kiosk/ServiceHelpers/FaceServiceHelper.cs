@@ -114,6 +114,16 @@ namespace ServiceHelpers
             await RunTaskWithAutoRetryOnQuotaLimitExceededError<object>(async () => { await action(); return null; });
         }
 
+        public static async Task CreatePersonIfNoGroupExists(string personGroupId, string name)
+        {
+            
+            //await faceClient.DeletePersonGroupAsync("111");
+            var groups = await faceClient.GetPersonGroupsAsync();
+            if(!groups.Where(g => g.PersonGroupId == personGroupId).Any())
+                await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(personGroupId, name));
+            
+        }
+
         public static async Task CreatePersonGroupAsync(string personGroupId, string name, string userData)
         {
             await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(personGroupId, name, userData));
@@ -197,6 +207,11 @@ namespace ServiceHelpers
         public static async Task CreatePersonAsync(string personGroupId, string name)
         {
             await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonAsync(personGroupId, name));
+        }
+
+        public static async Task<CreatePersonResult> CreatePersonWithResultAsync(string personGroupId, string name)
+        {
+            return await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonAsync(personGroupId, name));
         }
 
         public static async Task<Person> GetPersonAsync(string personGroupId, Guid personId)

@@ -76,6 +76,7 @@ namespace IntelligentKioskSample.Views
                 // When our Window loses focus due to user interaction Windows shuts it down, so we 
                 // detect here when the window regains focus and trigger a restart of the camera.
                 await this.cameraControl.StartStreamAsync();
+
             }
         }
 
@@ -95,14 +96,14 @@ namespace IntelligentKioskSample.Views
                     this.cameraGuideText.Text = "";
                     this.cameraGuideBallon.Opacity = 0;
 
-                    this.cameraGuideCountdownHost.Opacity = 1;
-                    this.countDownTextBlock.Text = "3";
-                    await Task.Delay(750);
-                    this.countDownTextBlock.Text = "2";
-                    await Task.Delay(750);
-                    this.countDownTextBlock.Text = "1";
-                    await Task.Delay(750);
-                    this.cameraGuideCountdownHost.Opacity = 0;
+                    //this.cameraGuideCountdownHost.Opacity = 1;
+                    //this.countDownTextBlock.Text = "3";
+                    //await Task.Delay(100);
+                    //this.countDownTextBlock.Text = "2";
+                    //await Task.Delay(100);
+                    //this.countDownTextBlock.Text = "1";
+                    //await Task.Delay(100);
+                    //this.cameraGuideCountdownHost.Opacity = 0;
 
                     this.ProcessCameraCapture(await this.cameraControl.TakeAutoCapturePhoto());
                     break;
@@ -128,17 +129,14 @@ namespace IntelligentKioskSample.Views
             {
                 this.photoCaptureBalloonHost.Opacity = 1;
 
-                int photoDisplayDuration = 10;
-                double decrementPerSecond = 100.0 / photoDisplayDuration;
-                for (double i = 100; i >= 0; i -= decrementPerSecond)
+                for (double i = 10*SettingsHelper.Instance.PhotoFrequency; i >= 0; i -= 1)
                 {
                     this.resultDisplayTimerUI.Value = i;
-                    await Task.Delay(1000);
+                    await Task.Delay(100);
                 }
 
                 this.photoCaptureBalloonHost.Opacity = 0;
                 this.imageFromCameraWithFaces.DataContext = null;
-
                 this.cameraControl.RestartAutoCaptureCycle();
             };
         }

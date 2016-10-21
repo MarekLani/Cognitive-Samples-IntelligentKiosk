@@ -124,18 +124,18 @@ namespace IntelligentKioskSample.Views
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
-            if (!string.IsNullOrEmpty(SettingsHelper.Instance.MallKioskDemoCustomSettings))
-            {
-                try
-                {
-                    string escapedContent = SettingsHelper.Instance.MallKioskDemoCustomSettings.Replace("&", "&amp;");
-                    this.kioskSettings = await MallKioskDemoSettings.FromContentAsync(escapedContent);
-                }
-                catch (Exception ex)
-                {
-                    await Util.GenericApiCallExceptionHandler(ex, "Failure parsing custom recommendation URLs. Will use default values instead.");
-                }
-            }
+            //if (!string.IsNullOrEmpty(SettingsHelper.Instance.MallKioskDemoCustomSettings))
+            //{
+            //    try
+            //    {
+            //        string escapedContent = SettingsHelper.Instance.MallKioskDemoCustomSettings.Replace("&", "&amp;");
+            //        this.kioskSettings = await MallKioskDemoSettings.FromContentAsync(escapedContent);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        await Util.GenericApiCallExceptionHandler(ex, "Failure parsing custom recommendation URLs. Will use default values instead.");
+            //    }
+            //}
 
             if (this.kioskSettings == null)
             {

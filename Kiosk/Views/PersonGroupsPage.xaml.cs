@@ -51,19 +51,19 @@ namespace IntelligentKioskSample.Views
 
         private async Task LoadPersonGroupsFromService()
         {
-            this.progressControl.IsActive = true;
+            //this.progressControl.IsActive = true;
 
-            try
-            {
-                IEnumerable<PersonGroup> personGroups = await FaceServiceHelper.GetPersonGroupsAsync(SettingsHelper.Instance.WorkspaceKey);
-                this.DataContext = personGroups.OrderBy(pg => pg.Name);
-            }
-            catch (Exception ex)
-            {
-                await Util.GenericApiCallExceptionHandler(ex, "Failure dowloading groups");
-            }
+            //try
+            //{
+            //    IEnumerable<PersonGroup> personGroups = await FaceServiceHelper.GetPersonGroupsAsync(SettingsHelper.Instance.WorkspaceKey);
+            //    this.DataContext = personGroups.OrderBy(pg => pg.Name);
+            //}
+            //catch (Exception ex)
+            //{
+            //    await Util.GenericApiCallExceptionHandler(ex, "Failure dowloading groups");
+            //}
 
-            this.progressControl.IsActive = false;
+            //this.progressControl.IsActive = false;
         }
 
         private void ListView_ItemClick(object sender, ItemClickEventArgs e)
@@ -78,15 +78,15 @@ namespace IntelligentKioskSample.Views
         {
             try
             {
-                if (string.IsNullOrEmpty(SettingsHelper.Instance.WorkspaceKey))
-                {
-                    throw new InvalidOperationException("Before you can create groups you need to define a Workspace Key in the Settings Page.");
-                }
+                //if (string.IsNullOrEmpty(SettingsHelper.Instance.WorkspaceKey))
+                //{
+                //    throw new InvalidOperationException("Before you can create groups you need to define a Workspace Key in the Settings Page.");
+                //}
 
-                await FaceServiceHelper.CreatePersonGroupAsync(Guid.NewGuid().ToString(), this.personGroupNameTextBox.Text, SettingsHelper.Instance.WorkspaceKey);
-                await this.LoadPersonGroupsFromService();
-                this.personGroupNameTextBox.Text = "";
-                this.addPersonGroupFlyout.Hide();
+                //await FaceServiceHelper.CreatePersonGroupAsync(Guid.NewGuid().ToString(), this.personGroupNameTextBox.Text, SettingsHelper.Instance.WorkspaceKey);
+                //await this.LoadPersonGroupsFromService();
+                //this.personGroupNameTextBox.Text = "";
+                //this.addPersonGroupFlyout.Hide();
             }
             catch (Exception ex)
             {

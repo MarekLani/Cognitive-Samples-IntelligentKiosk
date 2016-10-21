@@ -154,10 +154,9 @@
     </Compile>
     <Compile Include="NavMenuItem.cs" />
     <Compile Include="SettingsHelper.cs" />
+    <Compile Include="User.cs" />
     <Compile Include="Util.cs" />
-    <Compile Include="Views\BingNewsAnalytics.xaml.cs">
-      <DependentUpon>BingNewsAnalytics.xaml</DependentUpon>
-    </Compile>
+    <Compile Include="Views\Converters.cs" />
     <Compile Include="Views\DemoLauncherPage.xaml.cs">
       <DependentUpon>DemoLauncherPage.xaml</DependentUpon>
     </Compile>
@@ -296,10 +295,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Page>
-    <Page Include="Views\BingNewsAnalytics.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Views\DemoLauncherPage.xaml">
       <Generator>MSBuild:Compile</Generator>

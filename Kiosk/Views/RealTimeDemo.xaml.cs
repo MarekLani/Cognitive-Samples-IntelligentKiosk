@@ -68,6 +68,7 @@ namespace IntelligentKioskSample.Views
         private IEnumerable<Face> lastDetectedFaceSample;
         private IEnumerable<Tuple<Face, IdentifiedPerson>> lastIdentifiedPersonSample;
         private IEnumerable<SimilarFaceMatch> lastSimilarPersistedFaceSample;
+        private string groupName = SettingsHelper.Instance.GroupName;
 
         private DemographicsData demographics;
         private Dictionary<Guid, Visitor> visitors = new Dictionary<Guid, Visitor>();
@@ -109,12 +110,13 @@ namespace IntelligentKioskSample.Views
                 {
                     if (!this.isProcessingPhoto)
                     {
-                        if (DateTime.Now.Hour != this.demographics.StartTime.Hour)
-                        {
-                            // We have been running through the hour. Reset the data...
-                            await this.ResetDemographicsData();
-                            this.UpdateDemographicsUI();
-                        }
+                        //We do not need to update UI
+                        //if (DateTime.Now.Hour != this.demographics.StartTime.Hour)
+                        //{
+                        //    // We have been running through the hour. Reset the data...
+                        //    await this.ResetDemographicsData();
+                        //    this.UpdateDemographicsUI();
+                        //}
 
                         this.isProcessingPhoto = true;
                         if (this.cameraControl.NumFacesOnLastFrame == 0)
@@ -127,8 +129,8 @@ namespace IntelligentKioskSample.Views
                         }
                     }
                 });
-
-                await Task.Delay(1000);
+               
+                await Task.Delay(1000 * SettingsHelper.Instance.PhotoFrequency);
             }
         }
 
@@ -162,65 +164,46 @@ namespace IntelligentKioskSample.Views
 
             // Compute Emotion, Age and Gender
             await Task.WhenAll(e.DetectEmotionAsync(), e.DetectFacesAsync(detectFaceAttributes: true));
+            //We need to summarize information into one object
+            //TODO Filter out small faces - get rid of them them from DetectedFaces list
 
-            if (!e.DetectedEmotion.Any())
-            {
-                this.lastEmotionSample = null;
-                this.ShowTimelineFeedbackForNoFaces();
-            }
-            else
-            {
-                this.lastEmotionSample = e.DetectedEmotion;
+            List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName);
 
-                Scores averageScores = new Scores
-                {
-                    Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
-                    Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
-                    Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
-                    Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
-                    Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
-                    Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
-                    Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
-                    Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
-                };
+            //Updating Emotions UI, No need it final version
+            //if (!e.DetectedEmotion.Any())
+            //{
+            //    this.lastEmotionSample = null;
+            //    this.ShowTimelineFeedbackForNoFaces();
+            //}
+            //else
+            //{
+            //    this.lastEmotionSample = e.DetectedEmotion;
 
-                this.emotionDataTimelineControl.DrawEmotionData(averageScores);
-            }
+            //    Scores averageScores = new Scores
+            //    {
+            //        Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
+            //        Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
+            //        Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
+            //        Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
+            //        Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
+            //        Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
+            //        Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
+            //        Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
+            //    };
 
-            if (e.DetectedFaces == null || !e.DetectedFaces.Any())
-            {
-                this.lastDetectedFaceSample = null;
-            }
-            else
-            {
-                this.lastDetectedFaceSample = e.DetectedFaces;
-            }
+            //    this.emotionDataTimelineControl.DrawEmotionData(averageScores);
+            //}
 
-            // Compute Face Identification and Unique Face Ids
-            await Task.WhenAll(e.IdentifyFacesAsync(), e.FindSimilarPersistedFacesAsync());
+            //if (e.DetectedFaces == null || !e.DetectedFaces.Any())
+            //{
+            //    this.lastDetectedFaceSample = null;
+            //}
+            //else
+            //{
+            //    this.lastDetectedFaceSample = e.DetectedFaces;
+            //}
 
-            if (!e.IdentifiedPersons.Any())
-            {
-                this.lastIdentifiedPersonSample = null;
-            }
-            else
-            {
-                this.lastIdentifiedPersonSample = e.DetectedFaces.Select(f => new Tuple<Face, IdentifiedPerson>(f, e.IdentifiedPersons.FirstOrDefault(p => p.FaceId == f.FaceId)));
-            }
-
-            if (!e.SimilarFaceMatches.Any())
-            {
-                this.lastSimilarPersistedFaceSample = null;
-            }
-            else
-            {
-                this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
-            }
-
-            this.UpdateDemographics(e);
-
-            this.debugText.Text = string.Format("Latency: {0}ms", (int)(DateTime.Now - start).TotalMilliseconds);
-
+            
             this.isProcessingPhoto = false;
         }
 

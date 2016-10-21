@@ -72,26 +72,8 @@ namespace IntelligentKioskSample
 
         private async void OnSettingChanged(string propertyName, object value)
         {
-            if (propertyName == "MallKioskDemoCustomSettings")
-            {
-                // save to file as the content is too big to be saved as a string-like setting
-                StorageFile file = await ApplicationData.Current.RoamingFolder.CreateFileAsync(
-                    "MallKioskDemoCustomSettings.xml",
-                    CreationCollisionOption.ReplaceExisting);
-
-                using (Stream stream = await file.OpenStreamForWriteAsync())
-                {
-                    using (StreamWriter writer = new StreamWriter(stream))
-                    {
-                        await writer.WriteAsync(value.ToString());
-                    }
-                }
-            }
-            else
-            {
-                ApplicationData.Current.RoamingSettings.Values[propertyName] = value;
-            }
-
+            ApplicationData.Current.RoamingSettings.Values[propertyName] = value;
+            
             instance.OnSettingsChanged();
             instance.OnPropertyChanged(propertyName);
         }
@@ -126,35 +108,25 @@ namespace IntelligentKioskSample
                 this.EmotionApiKey = value.ToString();
             }
 
-            value = ApplicationData.Current.RoamingSettings.Values["BingSearchApiKey"];
-            if (value != null)
-            {
-                this.BingSearchApiKey = value.ToString();
-            }
-
-            value = ApplicationData.Current.RoamingSettings.Values["BingAutoSuggestionApiKey"];
-            if (value != null)
-            {
-                this.BingAutoSuggestionApiKey = value.ToString();
-            }
-
-            value = ApplicationData.Current.RoamingSettings.Values["WorkspaceKey"];
-            if (value != null)
-            {
-                this.WorkspaceKey = value.ToString();
-            }
-
-            value = ApplicationData.Current.RoamingSettings.Values["TextAnalyticsKey"];
-            if (value != null)
-            {
-                this.TextAnalyticsKey = value.ToString();
-            }
-
             value = ApplicationData.Current.RoamingSettings.Values["CameraName"];
             if (value != null)
             {
                 this.CameraName = value.ToString();
             }
+
+            value = ApplicationData.Current.RoamingSettings.Values["PhotoFrequency"];
+            if (value != null)
+            {
+                this.PhotoFrequency = Convert.ToInt32(value);
+            }
+
+            value = ApplicationData.Current.RoamingSettings.Values["GroupName"];
+            if (value != null)
+            {
+                this.GroupName = value.ToString();
+            }
+
+
 
             value = ApplicationData.Current.RoamingSettings.Values["MinDetectableFaceCoveragePercentage"];
             if (value != null)
@@ -175,28 +147,8 @@ namespace IntelligentKioskSample
                     this.ShowDebugInfo = booleanValue;
                 }
             }
-
-            // load mall kiosk demo custom settings from file as the content is too big to be saved as a string-like setting
-            try
-            {
-                using (Stream stream = await ApplicationData.Current.RoamingFolder.OpenStreamForReadAsync("MallKioskDemoCustomSettings.xml"))
-                {
-                    using (StreamReader reader = new StreamReader(stream))
-                    {
-                        this.MallKioskDemoCustomSettings = await reader.ReadToEndAsync();
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                this.RestoreMallKioskSettingsToDefaultFile();
-            }
         }
 
-        public void RestoreMallKioskSettingsToDefaultFile()
-        {
-            this.MallKioskDemoCustomSettings = File.ReadAllText("Views\\MallKioskDemoConfig\\MallKioskDemoSettings.xml");
-        }
 
         public void RestoreAllSettings()
         {
@@ -215,6 +167,17 @@ namespace IntelligentKioskSample
         }
 
 
+        private string groupName = "group";
+        public string GroupName
+        {
+            get { return this.groupName; }
+            set
+            {
+                this.groupName = value;
+                this.OnSettingChanged("GroupName", value);
+            }
+        }
+
         private string emotionApiKey = string.Empty;
         public string EmotionApiKey
         {
@@ -226,58 +189,15 @@ namespace IntelligentKioskSample
             }
         }
 
-        private string bingSearchApiKey = string.Empty;
-        public string BingSearchApiKey
-        {
-            get { return this.bingSearchApiKey; }
-            set
-            {
-                this.bingSearchApiKey = value;
-                this.OnSettingChanged("BingSearchApiKey", value);
-            }
-        }
 
-        private string bingAutoSuggestionSearchApiKey = string.Empty;
-        public string BingAutoSuggestionApiKey
+        private int photoFrequency = 1;
+        public int PhotoFrequency
         {
-            get { return this.bingAutoSuggestionSearchApiKey; }
+            get { return photoFrequency; }
             set
             {
-                this.bingAutoSuggestionSearchApiKey = value;
-                this.OnSettingChanged("BingAutoSuggestionApiKey", value);
-            }
-        }
-
-        private string workspaceKey = string.Empty;
-        public string WorkspaceKey
-        {
-            get { return workspaceKey; }
-            set
-            {
-                this.workspaceKey = value;
-                this.OnSettingChanged("WorkspaceKey", value);
-            }
-        }
-
-        private string mallKioskDemoCustomSettings = string.Empty;
-        public string MallKioskDemoCustomSettings
-        {
-            get { return this.mallKioskDemoCustomSettings; }
-            set
-            {
-                this.mallKioskDemoCustomSettings = value;
-                this.OnSettingChanged("MallKioskDemoCustomSettings", value);
-            }
-        }
-
-        private string textAnalyticsKey = string.Empty;
-        public string TextAnalyticsKey
-        {
-            get { return textAnalyticsKey; }
-            set
-            {
-                this.textAnalyticsKey = value;
-                this.OnSettingChanged("TextAnalyticsKey", value);
+                this.photoFrequency = value;
+                this.OnSettingChanged("PhotoFrequency", value);
             }
         }
 

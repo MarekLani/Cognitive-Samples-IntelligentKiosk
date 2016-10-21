@@ -91,5 +91,41 @@ namespace ServiceHelpers
 
             return false;
         }
+
+        public static Emotion FindEmotionForFace(Face f, IEnumerable<Emotion> emotions)
+        {
+            foreach(var e in emotions)
+            {
+                if(CompareRectangles(f.FaceRectangle, e.FaceRectangle, 5))
+                {
+                    return e;
+                }
+            }
+            return null;
+        }
+
+        public static bool CompareRectangles(FaceRectangle r1, Rectangle r2, int benevolence)
+        {
+            
+            if(Math.Abs(r1.Height - r2.Height) > benevolence)
+                return false;
+            if (Math.Abs(r1.Width - r2.Width) > benevolence)
+                return false;
+            if (Math.Abs(r1.Left - r2.Left) > benevolence)
+                return false;
+            if (Math.Abs(r1.Top - r2.Top) > benevolence)
+                return false;
+
+            return true;
+        }
+
+    }
+
+    public class DetectedAndIdentifiedFaceWithEmotions
+    {
+        public Emotion Emotion { get; set; }
+        public Face Face { get; set; }
+
+        public Guid PersonId { get; set; }
     }
 }

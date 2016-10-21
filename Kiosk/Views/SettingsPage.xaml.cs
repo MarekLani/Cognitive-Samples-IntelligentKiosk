@@ -33,6 +33,9 @@
 
 using System;
 using System.Threading.Tasks;
+using Windows.Security.Authentication.Web;
+using Windows.Security.Authentication.Web.Core;
+using Windows.Security.Credentials;
 using Windows.Storage;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
@@ -61,32 +64,12 @@ namespace IntelligentKioskSample.Views
             base.OnNavigatedFrom(e);
         }
 
-        private void OnGenerateNewKeyClicked(object sender, RoutedEventArgs e)
-        {
-            SettingsHelper.Instance.WorkspaceKey = Guid.NewGuid().ToString();
-        }
-
-        private async void OnResetSettingsClick(object sender, RoutedEventArgs e)
-        {
-            await Util.ConfirmActionAndExecute("This will reset all the settings and erase your changes. Confirm?",
-                async () =>
-                {
-                    await Task.Run(() => SettingsHelper.Instance.RestoreAllSettings());
-                    await new MessageDialog("Settings restored. Please restart the application to load the default settings.").ShowAsync();
-                });
-        }
-
         private void OnCameraSourceSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (this.cameraSourceComboBox.SelectedItem != null)
             {
                 SettingsHelper.Instance.CameraName = this.cameraSourceComboBox.SelectedItem.ToString();
             }
-        }
-
-        private void ResetMallKioskSettingsButtonClick(object sender, RoutedEventArgs e)
-        {
-            SettingsHelper.Instance.RestoreMallKioskSettingsToDefaultFile();
         }
     }
 }
