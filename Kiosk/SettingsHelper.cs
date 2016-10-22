@@ -126,6 +126,24 @@ namespace IntelligentKioskSample
                 this.GroupName = value.ToString();
             }
 
+            value = ApplicationData.Current.RoamingSettings.Values["HubNamespace"];
+            if (value != null)
+            {
+                this.HubNamespace = value.ToString();
+            }
+
+            value = ApplicationData.Current.RoamingSettings.Values["HubName"];
+            if (value != null)
+            {
+                this.HubName = value.ToString();
+            }
+
+            value = ApplicationData.Current.RoamingSettings.Values["HubKey"];
+            if (value != null)
+            {
+                this.HubKey = value.ToString();
+            }
+
 
 
             value = ApplicationData.Current.RoamingSettings.Values["MinDetectableFaceCoveragePercentage"];
@@ -231,6 +249,51 @@ namespace IntelligentKioskSample
             {
                 this.showDebugInfo = value;
                 this.OnSettingChanged("ShowDebugInfo", value);
+            }
+        }
+
+
+        private string hubNamespace = "kioskeventhub";
+        public string HubNamespace
+        {
+            get { return hubNamespace; }
+            set
+            {
+                this.hubNamespace = value;
+                this.OnSettingChanged("HubNamespace", value);
+            }
+        }
+
+        private string hubName = "hub1";
+        public string HubName
+        {
+            get { return hubName; }
+            set
+            {
+                this.hubName = value;
+                this.OnSettingChanged("HubName", value);
+            }
+        }
+
+        private string hubKey = "tvzonqLkFUm+9AXlT/rq8Fmh0HlzND7MwOiGW6r0TNo=";
+        public string HubKey
+        {
+            get { return hubKey; }
+            set
+            {
+                this.hubKey = value;
+                this.OnSettingChanged("HubKey", value);
+            }
+        }
+
+        private string hubKeyName = "AllowSend";
+        public string HubKeyName
+        {
+            get { return hubKeyName; }
+            set
+            {
+                this.hubKeyName = value;
+                this.OnSettingChanged("HubKeyName", value);
             }
         }
     }

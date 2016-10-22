@@ -49,6 +49,8 @@ using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
+using Newtonsoft.Json;
+
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -114,8 +116,8 @@ namespace IntelligentKioskSample.Views
                         //if (DateTime.Now.Hour != this.demographics.StartTime.Hour)
                         //{
                         //    // We have been running through the hour. Reset the data...
-                        //    await this.ResetDemographicsData();
-                        //    this.UpdateDemographicsUI();
+                        //await this.ResetDemographicsData();
+                        //this.UpdateDemographicsUI();
                         //}
 
                         this.isProcessingPhoto = true;
@@ -163,48 +165,60 @@ namespace IntelligentKioskSample.Views
             DateTime start = DateTime.Now;
 
             // Compute Emotion, Age and Gender
-            await Task.WhenAll(e.DetectEmotionAsync(), e.DetectFacesAsync(detectFaceAttributes: true));
-            //We need to summarize information into one object
-            //TODO Filter out small faces - get rid of them them from DetectedFaces list
 
-            List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName);
+            try
+            {
+                await Task.WhenAll(e.DetectEmotionAsync(), e.DetectFacesAsync(detectFaceAttributes: true));
+                //We need to summarize information into one object
+                //TODO Filter out small faces - get rid of them them from DetectedFaces list
 
-            //Updating Emotions UI, No need it final version
-            //if (!e.DetectedEmotion.Any())
-            //{
-            //    this.lastEmotionSample = null;
-            //    this.ShowTimelineFeedbackForNoFaces();
-            //}
-            //else
-            //{
-            //    this.lastEmotionSample = e.DetectedEmotion;
+                List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName);
 
-            //    Scores averageScores = new Scores
-            //    {
-            //        Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
-            //        Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
-            //        Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
-            //        Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
-            //        Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
-            //        Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
-            //        Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
-            //        Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
-            //    };
+                //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
+                //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
+                await Util.CallEventHubHttp(JsonConvert.SerializeObject(dfwes));
 
-            //    this.emotionDataTimelineControl.DrawEmotionData(averageScores);
-            //}
 
-            //if (e.DetectedFaces == null || !e.DetectedFaces.Any())
-            //{
-            //    this.lastDetectedFaceSample = null;
-            //}
-            //else
-            //{
-            //    this.lastDetectedFaceSample = e.DetectedFaces;
-            //}
+                //Updating Emotions UI, No need it final version
+                if (!e.DetectedEmotion.Any())
+                {
+                    this.lastEmotionSample = null;
+                    this.ShowTimelineFeedbackForNoFaces();
+                }
+                else
+                {
+                    this.lastEmotionSample = e.DetectedEmotion;
 
-            
+                    Scores averageScores = new Scores
+                    {
+                        Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
+                        Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
+                        Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
+                        Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
+                        Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
+                        Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
+                        Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
+                        Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
+                    };
+
+                    this.emotionDataTimelineControl.DrawEmotionData(averageScores);
+                }
+
+                if (e.DetectedFaces == null || !e.DetectedFaces.Any())
+                {
+                    this.lastDetectedFaceSample = null;
+                }
+                else
+                {
+                    this.lastDetectedFaceSample = e.DetectedFaces;
+                }
+            }
+            catch (Exception ex) {
+                }
+
+            this.UpdateDemographics(e);
             this.isProcessingPhoto = false;
+           
         }
 
         private void ShowTimelineFeedbackForNoFaces()

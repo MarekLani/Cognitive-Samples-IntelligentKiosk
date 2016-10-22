@@ -48,6 +48,12 @@ using Windows.Storage.Streams;
 using Windows.UI.Popups;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using ppatierno.AzureSBLite;
+using ppatierno.AzureSBLite.Messaging;
+using System.Text;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Net.Http;
 
 namespace IntelligentKioskSample
 {
@@ -186,12 +192,112 @@ namespace IntelligentKioskSample
 			}
 		}
 
-		public static void AddRange<T>(this IList<T> list, IEnumerable<T> items)
+        private static MessagingFactory factory = null;
+        private static EventHubClient client = null;
+
+        internal static void SendMessageToEventHub(string payload)
+        {
+            string connectionString= "Endpoint=sb://kioskeventhub.servicebus.windows.net/;SharedAccessKeyName=AllowSend;SharedAccessKey=tvzonqLkFUm+9AXlT/rq8Fmh0HlzND7MwOiGW6r0TNo=";
+            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
+            builder.TransportType = TransportType.Amqp;
+
+            if(factory == null)
+                factory = MessagingFactory.CreateFromConnectionString(connectionString);
+            if(client == null)
+                client = factory.CreateEventHubClient("hub1");
+
+            EventHubSender sender = client.CreatePartitionedSender("partition");
+
+            EventData data = new EventData(Encoding.UTF8.GetBytes(payload));
+            data.Properties["time"] = DateTime.UtcNow;
+            sender.Send(data);
+            sender.Close();
+            
+        }
+
+        public static void AddRange<T>(this IList<T> list, IEnumerable<T> items)
         {
             foreach (var item in items)
             {
                 list.Add(item);
             }
+        }
+        private static string sasToken = null;
+        public static async Task CallEventHubHttp(string payload)
+        {
+
+            var serviceNamespace = SettingsHelper.Instance.HubNamespace;
+            var hubName = SettingsHelper.Instance.HubName;
+            var baseAddress = new Uri(string.Format("https://{0}.servicebus.windows.net/", serviceNamespace));
+            var url = baseAddress + string.Format("{0}/publishers/testdevice/messages", hubName);
+
+            // Create client.
+            var httpClient = new HttpClient();
+
+            if(sasToken == null)
+                sasToken = createToken(serviceNamespace, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
+
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", sasToken);
+
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            content.Headers.Add("ContentType", "application/json");
+            try
+            {
+                await httpClient.PostAsync(url, content);
+            }
+            catch(Exception ex)
+            {
+                sasToken = ex.Message;
+                sasToken = createToken(serviceNamespace, "AllowSend", "tvzonqLkFUm+9AXlT/rq8Fmh0HlzND7MwOiGW6r0TNo=");
+            }
+        }
+
+        private static string createToken(string resourceUri, string keyName, string key)
+        {
+            TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
+            var week = 60 * 60 * 24 * 7;
+            var expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
+            string stringToSign =  Uri.EscapeDataString(resourceUri) + "\n" + expiry;
+            HMACSHA256 hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
+            var signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+            var sasToken = String.Format(CultureInfo.InvariantCulture, "SharedAccessSignature sr={0}&sig={1}&se={2}&skn={3}", Uri.EscapeDataString(resourceUri), Uri.EscapeDataString(signature), expiry, keyName);
+            return sasToken;
+        }
+
+        public static void SendAMQPMessage(string payload)
+        {
+            string eventHubNamespace = "kioskeventhub";
+            string eventHubName = "hub1";
+            string policyName = "AllowSend";
+            string key = "tvzonqLkFUm+9AXlT/rq8Fmh0HlzND7MwOiGW6r0TNo=";
+            string partitionkey = "partitionkey";
+
+            //Endpoint = sb://kioskeventhub.servicebus.windows.net/;SharedAccessKeyName=SendPolicy;SharedAccessKey=/ncGKkouu7a4qVdEHPgwdmBv5p2fGDGf7aPHjD0/5n8=;EntityPath=hub1
+
+            string data = payload;
+
+            Amqp.Address address = new Amqp.Address(
+                string.Format("{0}.servicebus.windows.net", eventHubNamespace),
+                5671, policyName, key);
+
+            Amqp.Connection connection = new Amqp.Connection(address);
+            Amqp.Session session = new Amqp.Session(connection);
+            Amqp.SenderLink senderlink = new Amqp.SenderLink(session,
+                string.Format("send-link:{0}", eventHubName), eventHubName);
+
+            Amqp.Message message = new Amqp.Message()
+            {
+                BodySection = new Amqp.Framing.Data()
+                {
+                    Binary = System.Text.Encoding.UTF8.GetBytes(data)
+                }
+            };
+
+            message.MessageAnnotations = new Amqp.Framing.MessageAnnotations();
+            message.MessageAnnotations[new Amqp.Types.Symbol("x-opt-partition-key")] =
+               string.Format("pk:", partitionkey);
+
+            senderlink.Send(message);
         }
     }
 }

@@ -521,12 +521,14 @@ namespace IntelligentKioskSample.Controls
 			}
 			catch (Exception ex)
 			{
-				if (this.ShowDialogOnApiErrors)
-				{
-					await Util.GenericApiCallExceptionHandler(ex, "Error capturing photo.");
-				}
-			}
-			finally
+#if DEBUG
+                if (this.ShowDialogOnApiErrors)
+                {
+                	await Util.GenericApiCallExceptionHandler(ex, "Error capturing photo.");
+                }
+#endif
+            }
+            finally
 			{
 				this.frameProcessingSemaphore.Release();
 			}
@@ -550,7 +552,7 @@ namespace IntelligentKioskSample.Controls
             }
         }
 
-        #endregion
+#endregion
 
         public void HideCameraControls()
         {

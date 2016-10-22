@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
+using Windows.UI.ApplicationSettings;
 
 namespace IntelligentKioskSample
 {
@@ -18,10 +19,13 @@ namespace IntelligentKioskSample
         public static async Task<string> Login()
         {
 
+            
             WebAccountProvider wap = await WebAuthenticationCoreManager.FindAccountProviderAsync("https://login.microsoft.com", authority);
+            
             string clientId = "86002696-b38a-4aad-9cc3-73b9e76e1ea9";
 
-         
+
+
 
             //Getting redirect url
             //string URI = string.Format("ms-appx-web://Microsoft.AAD.BrokerPlugIn/{0}", WebAuthenticationBroker.GetCurrentApplicationCallbackUri().Host.ToUpper());
@@ -31,6 +35,7 @@ namespace IntelligentKioskSample
             WebTokenRequest(wap, string.Empty, clientId);
 
             wtr.Properties.Add("resource", resource);
+            
             WebTokenRequestResult wtrr = await WebAuthenticationCoreManager.RequestTokenAsync(wtr);
 
             if (wtrr.ResponseStatus == WebTokenRequestStatus.Success)
@@ -42,6 +47,14 @@ namespace IntelligentKioskSample
             }
             else
             {
+
+                WebAccount accountToDelete = await WebAuthenticationCoreManager .FindAccountAsync(wap, clientId);
+
+                if (accountToDelete != null)
+                {
+                    await accountToDelete.SignOutAsync();
+                }
+               
                 return "";
             }
         }

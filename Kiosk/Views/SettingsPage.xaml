@@ -17,63 +17,97 @@
 
               
         <ScrollViewer Grid.Row="1">
-
-            <StackPanel Orientation="Vertical" Margin="12,12" >
-                <StackPanel >
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Settings" Style="{StaticResource SubheaderTextBlockStyle}"/>
+            <StackPanel>
+                <StackPanel x:Name="LoginPanel" HorizontalAlignment="Center" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,40">
+                    <TextBlock Text="To change settings you need to be logged in"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10">
+                        <TextBlock Text="Login Name:" Width="100"/>
+                        <TextBox x:Name="LoginName" Width="200"/>
                     </StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition/>
-                            <ColumnDefinition Width="auto"/>
-                        </Grid.ColumnDefinitions>
-                    </Grid>
-                    <StackPanel Orientation="Vertical">
-                        <TextBlock Text="Face API Key" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
-                        <PasswordBox Password="{Binding FaceApiKey, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,10">
+                        <TextBlock Text="Password:" Width="100"/>
+                        <PasswordBox x:Name="Password" Width="200"/>
+                    </StackPanel>
+                    <Button HorizontalAlignment="Right" Width="200" Content="Login" Click="LoginButton_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Vertical" Margin="12,12" Visibility="Visible" x:Name="MainContent" >
+                    <Button Content="Logout" HorizontalAlignment="Right" Click="LogoutButton_Click"/>
+                    <StackPanel >
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Settings" Style="{StaticResource SubheaderTextBlockStyle}"/>
+                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="auto"/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Face API Key" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <PasswordBox Password="{Binding FaceApiKey, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Emotion API Key" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <PasswordBox Password="{Binding EmotionApiKey, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Face Api Group Name" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <TextBox Text="{Binding GroupName, Mode=TwoWay}" />
+                        </StackPanel>
+
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Hub namespace " Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <TextBox Text="{Binding HubNamespace, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Hub name" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <TextBox Text="{Binding HubName, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Hub Namespace send key name" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <TextBox Text="{Binding HubKeyName, Mode=TwoWay}" />
+                        </StackPanel>
+                        
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Hub Namespace send key" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
+                            <TextBox Text="{Binding HubKey, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical" Margin="0,10,0,0"/>
+
+                        <StackPanel Orientation="Vertical" Margin="0,10,0,0"  />
+
+                        <StackPanel Orientation="Vertical" Margin="0,10,0,0"  />
+
+                        <StackPanel Orientation="Vertical" Margin="0,10,0,0"/>
+
                     </StackPanel>
 
-                    <StackPanel Orientation="Vertical">
-                        <TextBlock Text="Emotion API Key" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
-                        <PasswordBox Password="{Binding EmotionApiKey, Mode=TwoWay}" />
+                    <StackPanel Margin="0,50,0,0">
+                        <TextBlock Text="Miscellaneous" Style="{StaticResource SubheaderTextBlockStyle}"/>
+                        <ComboBox x:Name="cameraSourceComboBox" Header="Camera Source"  SelectionChanged="OnCameraSourceSelectionChanged"/>
+                        <ToggleSwitch IsOn="{Binding ShowDebugInfo, Mode=TwoWay}" Header="Show debug info:" Margin="0,6,0,0"/>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="MinDetectableFaceSizeSlider" Minimum="0" Maximum="100" Value="{Binding MinDetectableFaceCoveragePercentage, Mode=TwoWay}" SmallChange="1" LargeChange="5" Header="Minimum detectable face size (as % of image height):" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=MinDetectableFaceSizeSlider, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="PhotoFrequency" Minimum="1" Maximum="10" Value="{Binding PhotoFrequency, Mode=TwoWay}" SmallChange="1" LargeChange="5" Header="Photo frequency:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=PhotoFrequency, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
                     </StackPanel>
 
-                    <StackPanel Orientation="Vertical">
-                        <TextBlock Text="Face Api Group Name" Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
-                        <TextBox Text="{Binding GroupName, Mode=TwoWay}" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Vertical" Margin="0,10,0,0"/>
-
-                    <StackPanel Orientation="Vertical" Margin="0,10,0,0"  />
-
-                    <StackPanel Orientation="Vertical" Margin="0,10,0,0"  />
-
-                    <StackPanel Orientation="Vertical" Margin="0,10,0,0"/>
+                    <StackPanel Margin="0,25,0,0"/>
 
                 </StackPanel>
-
-                <StackPanel Margin="0,50,0,0">
-                    <TextBlock Text="Miscellaneous" Style="{StaticResource SubheaderTextBlockStyle}"/>
-                    <ComboBox x:Name="cameraSourceComboBox" Header="Camera Source"  SelectionChanged="OnCameraSourceSelectionChanged"/>               
-                    <ToggleSwitch IsOn="{Binding ShowDebugInfo, Mode=TwoWay}" Header="Show debug info:" Margin="0,6,0,0"/>
-                
-                    <StackPanel Orientation="Horizontal">
-                        <Slider x:Name="MinDetectableFaceSizeSlider" Minimum="0" Maximum="100" Value="{Binding MinDetectableFaceCoveragePercentage, Mode=TwoWay}" SmallChange="1" LargeChange="5" Header="Minimum detectable face size (as % of image height):" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
-                        <TextBlock Text="{Binding ElementName=MinDetectableFaceSizeSlider, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                        <Slider x:Name="PhotoFrequency" Minimum="1" Maximum="10" Value="{Binding PhotoFrequency, Mode=TwoWay}" SmallChange="1" LargeChange="5" Header="Photo frequency:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
-                        <TextBlock Text="{Binding ElementName=PhotoFrequency, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Margin="0,25,0,0"/>
-
             </StackPanel>
-            
         </ScrollViewer>
 
     </Grid>

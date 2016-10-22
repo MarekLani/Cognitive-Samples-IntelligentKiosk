@@ -59,6 +59,25 @@ namespace IntelligentKioskSample.Views
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
+
+            var vault = new PasswordVault();
+            bool hasCredential = false;
+            try
+            {
+                var list = vault.FindAllByResource("token");
+                hasCredential = true;
+            }
+            catch (Exception) { }
+            if (hasCredential)
+            {
+                MainContent.Visibility = Visibility.Visible;
+                LoginPanel.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                MainContent.Visibility = Visibility.Collapsed;
+                LoginPanel.Visibility = Visibility.Visible;
+            }
             this.cameraSourceComboBox.ItemsSource = await Util.GetAvailableCameraNamesAsync();
             this.cameraSourceComboBox.SelectedItem = SettingsHelper.Instance.CameraName;
             base.OnNavigatedFrom(e);
@@ -70,6 +89,40 @@ namespace IntelligentKioskSample.Views
             {
                 SettingsHelper.Instance.CameraName = this.cameraSourceComboBox.SelectedItem.ToString();
             }
+        }
+
+
+        private async void LogoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            //await User.LogOut();
+
+            var vault = new PasswordVault();
+            vault.Remove(vault.FindAllByResource("token")[0]);
+
+            LoginPanel.Visibility = Visibility.Visible;
+            MainContent.Visibility = Visibility.Collapsed;
+        }
+
+        private async void LoginButton_Click(object sender, RoutedEventArgs e)
+        {
+            //string token = await User.Login();
+
+            if (LoginName.Text == "KioskAdmin" && Password.Password == "KioskPass")
+            {
+                var vault = new PasswordVault();
+                vault.Add(new PasswordCredential(
+                    "token", "user", "loggedin"));
+
+                LoginPanel.Visibility = Visibility.Collapsed;
+                MainContent.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                var dialog = new MessageDialog("Wrong name or password provided", "Error Logging in");
+                dialog.Options = MessageDialogOptions.None;
+                dialog.ShowAsync();
+            }
+                
         }
     }
 }
