@@ -248,7 +248,7 @@ namespace IntelligentKioskSample
             catch(Exception ex)
             {
                 sasToken = ex.Message;
-                sasToken = createToken(serviceNamespace, "AllowSend", "tvzonqLkFUm+9AXlT/rq8Fmh0HlzND7MwOiGW6r0TNo=");
+                sasToken = createToken(serviceNamespace, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
             }
         }
 

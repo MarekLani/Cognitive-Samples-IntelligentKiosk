@@ -23,21 +23,44 @@
             <RowDefinition Height="0.05*" />            
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Row="3" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
 
             <Grid x:Name="cameraHostGrid">
-                <ctl:CameraControl x:Name="cameraControl" />
+                <ctl:CameraControl x:Name="cameraControl" ShowDialogOnApiErrors="False" />
             </Grid>
 
             <TextBlock x:Name="debugText" Opacity="0.6" Margin="0,0,2,0"  HorizontalAlignment="Right" VerticalAlignment="Bottom" />
         </Grid>
+        <ScrollViewer Height="600" Grid.Row="3" Grid.Column="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <ListView x:Name="IdentifiedPersonsIds">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="10" Orientation="Horizontal">
+                                <TextBlock FontSize="8" Text="{Binding Id}" />
+                                <TextBlock FontSize="8" Text="x" Visibility="{Binding Deleted}" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                        
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </ScrollViewer>
+        
 
-        <StackPanel Grid.Row="1">
-            <TextBlock Text="Realtime Crowd Insights Sample" Foreground="White" HorizontalAlignment="Center" FontFamily="Segoe UI Light" Style="{StaticResource HeaderTextBlockStyle}"/>
-            <TextBlock Text="Deriving realtime crowd insights from age, gender, emotion, face identification and unique face tracking" HorizontalAlignment="Center" FontFamily="Segoe UI Light"  Style="{StaticResource SubtitleTextBlockStyle}" FontStyle="Italic"/>
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+            <TextBlock Text="Realtime Crowd Insights" Foreground="White" HorizontalAlignment="Center" FontFamily="Segoe UI Light" Style="{StaticResource HeaderTextBlockStyle}"/>
         </StackPanel>
 
-        <Grid Grid.Row="5" Height="165">
+        <!--<Grid Grid.Row="5" Height="165">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.1*"/>
                 <ColumnDefinition Width="300"/>
@@ -48,7 +71,7 @@
             <ctl:AgeGenderDistributionControl x:Name="ageGenderDistributionControl" HeaderText="Demographics" SubHeaderText="At this hour (erased hourly)" SubHeaderVisibility="Visible" Grid.Column="1" />
             <ctl:OverallStatsControl x:Name="overallStatsControl" HeaderText="Total Faces" SubHeaderText="At this hour (erased hourly)" SubHeaderVisibility="Visible" Margin="24,0,24,0" Grid.Column="2" />
             <ctl:EmotionResponseTimelineControl Grid.Column="3" x:Name="emotionDataTimelineControl"  />
-        </Grid>
+        </Grid>-->
 
         <Grid Grid.Row="3" x:Name="initializingUI" Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">

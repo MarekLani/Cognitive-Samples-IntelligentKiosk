@@ -61,23 +61,23 @@ namespace IntelligentKioskSample
                 new NavMenuItem()
                 {
                     Symbol = Symbol.Home,
-                    Label = LandingPage.Title,
-                    DestPage = typeof(LandingPage)
+                    Label = "Face recognition",
+                    DestPage = typeof(RealTimeDemo)
                 },
 
-                new NavMenuItem()
-                {
-                    Symbol = Symbol.Favorite,
-                    Label = "Demos",
-                    DestPage = typeof(DemoLauncherPage)
-                },
+                //new NavMenuItem()
+                //{
+                //    Symbol = Symbol.Favorite,
+                //    Label = "Demos",
+                //    DestPage = typeof(DemoLauncherPage)
+                //},
 
-                new NavMenuItem()
-                {
-                    Symbol = Symbol.Contact2,
-                    Label = "Face Identification Setup",
-                    DestPage = typeof(PersonGroupsPage)
-                },
+                //new NavMenuItem()
+                //{
+                //    Symbol = Symbol.Contact2,
+                //    Label = "Face Identification Setup",
+                //    DestPage = typeof(PersonGroupsPage)
+                //},
 
                 new NavMenuItem()
                 {

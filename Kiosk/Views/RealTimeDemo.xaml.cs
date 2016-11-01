@@ -50,6 +50,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using Newtonsoft.Json;
+using System.Collections.ObjectModel;
 
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -75,6 +76,22 @@ namespace IntelligentKioskSample.Views
         private DemographicsData demographics;
         private Dictionary<Guid, Visitor> visitors = new Dictionary<Guid, Visitor>();
 
+        private ObservableCollection<IdentifiedFaces> identifiedPersonsIdCollection = new ObservableCollection<IdentifiedFaces>();
+
+        private class IdentifiedFaces
+        {
+            public string Id { get; set; }
+            public DateTime CreatedAt { get; set; }
+
+            public IdentifiedFaces()
+            {
+                CreatedAt = DateTime.Now;
+            }
+
+            public int NumberOfIdentifications { get; set; } = 0;
+            public Visibility Deleted { get; set; } = Visibility.Collapsed;
+        }
+
         public RealTimeDemo()
         {
             this.InitializeComponent();
@@ -86,6 +103,7 @@ namespace IntelligentKioskSample.Views
             this.cameraControl.FilterOutSmallFaces = true;
             this.cameraControl.HideCameraControls();
             this.cameraControl.CameraAspectRatioChanged += CameraControl_CameraAspectRatioChanged;
+            this.IdentifiedPersonsIds.ItemsSource = identifiedPersonsIdCollection;
         }
 
         private void CameraControl_CameraAspectRatioChanged(object sender, EventArgs e)
@@ -132,7 +150,7 @@ namespace IntelligentKioskSample.Views
                     }
                 });
                
-                await Task.Delay(1000 * SettingsHelper.Instance.PhotoFrequency);
+                await Task.Delay(500 * SettingsHelper.Instance.PhotoFrequency);
             }
         }
 
@@ -170,14 +188,37 @@ namespace IntelligentKioskSample.Views
             {
                 await Task.WhenAll(e.DetectEmotionAsync(), e.DetectFacesAsync(detectFaceAttributes: true));
                 //We need to summarize information into one object
-                //TODO Filter out small faces - get rid of them them from DetectedFaces list
+                
 
-                List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName);
+                List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, SettingsHelper.Instance.Confidence);
 
+                foreach(var f in dfwes)
+                {
+                    foreach(var c in f.Candidates)
+                    if(!identifiedPersonsIdCollection.Where(ip => ip.Id == c.PersonId.ToString()).Any())
+                    {
+                        identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = c.PersonId.ToString() });      
+                    }
+                    else
+                    {
+                      identifiedPersonsIdCollection.Where(ip => ip.Id == c.PersonId.ToString()).FirstOrDefault().NumberOfIdentifications++;
+                    }
+                }
+                foreach(var ip in identifiedPersonsIdCollection)
+                {
+                    if(ip.NumberOfIdentifications <=  1 && (ip.CreatedAt - DateTime.Now).Seconds > SettingsHelper.Instance.DeleteWindow){
+                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName,  new Guid(ip.Id));
+                        //if we saved only one face then delete
+                        if (pers.PersistedFaceIds.Length == 1) {
+                           await FaceServiceHelper.DeletePersonAsync(SettingsHelper.Instance.GroupName, pers.PersonId);
+                           ip.Deleted = Visibility.Visible;
+                        }
+                    }
+                        
+                }
                 //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
                 //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
                 await Util.CallEventHubHttp(JsonConvert.SerializeObject(dfwes));
-
 
                 //Updating Emotions UI, No need it final version
                 if (!e.DetectedEmotion.Any())
@@ -189,19 +230,20 @@ namespace IntelligentKioskSample.Views
                 {
                     this.lastEmotionSample = e.DetectedEmotion;
 
-                    Scores averageScores = new Scores
-                    {
-                        Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
-                        Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
-                        Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
-                        Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
-                        Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
-                        Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
-                        Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
-                        Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
-                    };
+                    //Scores averageScores = new Scores
+                    //{
+                    //    Happiness = e.DetectedEmotion.Average(em => em.Scores.Happiness),
+                    //    Anger = e.DetectedEmotion.Average(em => em.Scores.Anger),
+                    //    Sadness = e.DetectedEmotion.Average(em => em.Scores.Sadness),
+                    //    Contempt = e.DetectedEmotion.Average(em => em.Scores.Contempt),
+                    //    Disgust = e.DetectedEmotion.Average(em => em.Scores.Disgust),
+                    //    Neutral = e.DetectedEmotion.Average(em => em.Scores.Neutral),
+                    //    Fear = e.DetectedEmotion.Average(em => em.Scores.Fear),
+                    //    Surprise = e.DetectedEmotion.Average(em => em.Scores.Surprise)
+                    //};
 
-                    this.emotionDataTimelineControl.DrawEmotionData(averageScores);
+                    //We do not want this info in this version
+                    //this.emotionDataTimelineControl.DrawEmotionData(averageScores);
                 }
 
                 if (e.DetectedFaces == null || !e.DetectedFaces.Any())
@@ -216,14 +258,15 @@ namespace IntelligentKioskSample.Views
             catch (Exception ex) {
                 }
 
-            this.UpdateDemographics(e);
+            //this.UpdateDemographics(e);
             this.isProcessingPhoto = false;
            
         }
 
         private void ShowTimelineFeedbackForNoFaces()
         {
-            this.emotionDataTimelineControl.DrawEmotionData(new Scores { Neutral = 1 });
+            //Do not want this info in current version
+            //this.emotionDataTimelineControl.DrawEmotionData(new Scores { Neutral = 1 });
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -238,8 +281,8 @@ namespace IntelligentKioskSample.Views
             {
                 await FaceListManager.Initialize();
 
-                await ResetDemographicsData();
-                this.UpdateDemographicsUI();
+                //await ResetDemographicsData();
+                //this.UpdateDemographicsUI();
 
                 await this.cameraControl.StartStreamAsync(isForRealTimeProcessing: true);
                 this.StartProcessingLoop();
@@ -311,17 +354,18 @@ namespace IntelligentKioskSample.Views
 
                 if (demographicsChanged)
                 {
-                    this.ageGenderDistributionControl.UpdateData(this.demographics);
+                    //Do not want this info in current version
+                   // this.ageGenderDistributionControl.UpdateData(this.demographics);
                 }
 
-                this.overallStatsControl.UpdateData(this.demographics);
+                //this.overallStatsControl.UpdateData(this.demographics);
             }
         }
 
         private void UpdateDemographicsUI()
         {
-            this.ageGenderDistributionControl.UpdateData(this.demographics);
-            this.overallStatsControl.UpdateData(this.demographics);
+            //this.ageGenderDistributionControl.UpdateData(this.demographics);
+            //this.overallStatsControl.UpdateData(this.demographics);
         }
 
         private async Task ResetDemographicsData()

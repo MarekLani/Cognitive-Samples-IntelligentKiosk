@@ -126,6 +126,11 @@ namespace ServiceHelpers
         public Emotion Emotion { get; set; }
         public Face Face { get; set; }
 
-        public Guid PersonId { get; set; }
+        public List<Candidate> Candidates {get; set;}
+
+       // public Guid PersonId { get; set; }
+
+        public DateTime TimeStamp { get; set; }
     }
+
 }

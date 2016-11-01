@@ -108,6 +108,12 @@ namespace IntelligentKioskSample
                 this.EmotionApiKey = value.ToString();
             }
 
+            value = ApplicationData.Current.RoamingSettings.Values["Confidence"];
+            if (value != null)
+            {
+                this.Confidence = Convert.ToDouble(value);
+            }
+
             value = ApplicationData.Current.RoamingSettings.Values["CameraName"];
             if (value != null)
             {
@@ -118,6 +124,12 @@ namespace IntelligentKioskSample
             if (value != null)
             {
                 this.PhotoFrequency = Convert.ToInt32(value);
+            }
+
+            value = ApplicationData.Current.RoamingSettings.Values["DeleteWindow"];
+            if (value != null)
+            {
+                this.DeleteWindow = Convert.ToInt32(value);
             }
 
             value = ApplicationData.Current.RoamingSettings.Values["GroupName"];
@@ -218,6 +230,30 @@ namespace IntelligentKioskSample
                 this.OnSettingChanged("PhotoFrequency", value);
             }
         }
+
+        //specifies how much time we leave before we delete face with only one identification (in seconds)
+        private int deleteWindow = 30;
+        public int DeleteWindow
+        {
+            get { return deleteWindow; }
+            set
+            {
+                this.deleteWindow = value;
+                this.OnSettingChanged("DeleteWindow", value);
+            }
+        }
+
+        private double confidence = 0.8;
+        public double Confidence
+        {
+            get { return confidence; }
+            set
+            {
+                this.confidence = value;
+                this.OnSettingChanged("Confidence", value);
+            }
+        }
+
 
         private string cameraName = string.Empty;
         public string CameraName

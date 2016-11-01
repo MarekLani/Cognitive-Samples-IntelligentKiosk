@@ -48,10 +48,7 @@ using Windows.Media.Capture;
 using Windows.Media.Devices;
 using Windows.Media.FaceAnalysis;
 using Windows.Media.MediaProperties;
-using Windows.Media.SpeechRecognition;
-using Windows.Storage;
 using Windows.System.Threading;
-using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -354,7 +351,7 @@ namespace IntelligentKioskSample.Controls
 
         private async void UpdateAutoCaptureState(IEnumerable<DetectedFace> detectedFaces)
         {
-            const int IntervalBeforeCheckingForStill = 500;
+            const int IntervalBeforeCheckingForStill = 200;
             const int IntervalWithoutFacesBeforeRevertingToWaitingForFaces = 3;
 
             if (!detectedFaces.Any())

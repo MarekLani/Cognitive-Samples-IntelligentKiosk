@@ -102,6 +102,16 @@
                             <Slider x:Name="PhotoFrequency" Minimum="1" Maximum="10" Value="{Binding PhotoFrequency, Mode=TwoWay}" SmallChange="1" LargeChange="5" Header="Photo frequency:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
                             <TextBlock Text="{Binding ElementName=PhotoFrequency, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
                         </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="DeleteWindow" Minimum="1" Maximum="200" Value="{Binding DeleteWindow, Mode=TwoWay}" SmallChange="1" LargeChange="10" Header="Delete Window (specifies how much time we leave before we delete face with only one identification (in seconds)):" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=DeleteWindow, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="Confidence" Minimum="0.5" Maximum="1" Value="{Binding PhotoFrequency, Mode=TwoWay}" SmallChange="0.1" LargeChange="0.1" Header="Needed confidence when identifying person:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="0.1"/>
+                            <TextBlock Text="{Binding ElementName=Confidence, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel Margin="0,25,0,0"/>

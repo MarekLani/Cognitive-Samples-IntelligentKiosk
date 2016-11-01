@@ -251,7 +251,7 @@ namespace ServiceHelpers
             this.OnFaceRecognitionCompleted();
         }
 
-        public async Task<List<DetectedAndIdentifiedFaceWithEmotions>> IdentifyOrAddPersonWithEmotionsAsync(string groupName)
+        public async Task<List<DetectedAndIdentifiedFaceWithEmotions>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, double confidence)
         {
             //We also add emotions
             var dfwes = new List<DetectedAndIdentifiedFaceWithEmotions>();
@@ -259,6 +259,7 @@ namespace ServiceHelpers
             {
                 var dfwe = new DetectedAndIdentifiedFaceWithEmotions() { Face = f };
                 dfwe.Emotion = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
+                dfwe.TimeStamp = DateTime.Now;
                 dfwes.Add(dfwe);
             }
             var newPersonID = Guid.NewGuid();
@@ -278,32 +279,34 @@ namespace ServiceHelpers
                 await Task.WhenAll(this.IdentifyFacesInSingleGroupAsync(groupName,f.FaceId));
                 if (this.Candidates != null && this.Candidates.Candidates != null && this.Candidates.Candidates.Any())
                 {
-                    //We have candidates
-                    foreach (var c in this.Candidates.Candidates)
-                    {
 
-                        //TODO Change for param
-                        //Check whether it has needed confidence
-                        if (c.Confidence < 0.8)
+                    dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().Candidates = this.Candidates.Candidates.OrderByDescending(ca => ca.Confidence).ToList();
+                    //We have candidates
+                    //For now we are returning all candidates
+                    var c = this.Candidates.Candidates.OrderByDescending(ca => ca.Confidence).FirstOrDefault();
+                    //foreach (var c in this.Candidates.Candidates.OrderByDescending(ca => ca.Confidence).For)
+                    //{
+                    //    //Check whether it has needed confidence
+                    //    if (c.Confidence < confidence)
+                    //    {
+                    //        //if no we create person
+                    //        newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupName, Guid.NewGuid().ToString())).PersonId;
+                    //        dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = newPersonID;
+                    //        await FaceServiceHelper.AddPersonFaceAsync(groupName, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
+                    //    }
+                    if(c.Confidence >= confidence)
+                    {
+                        //We get person
+                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName, c.PersonId);
+                        //dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = c.PersonId;
+                        if (pers.PersistedFaceIds.Length == 248)
                         {
-                            //if no we create person
-                            newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupName, Guid.NewGuid().ToString())).PersonId;
-                            dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = newPersonID;
-                            await FaceServiceHelper.AddPersonFaceAsync(groupName, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
+                            Guid persistedFaceId = pers.PersistedFaceIds.OrderBy(x => Guid.NewGuid()).FirstOrDefault();
+                            await FaceServiceHelper.DeletePersonFaceAsync(groupName, c.PersonId, persistedFaceId);
                         }
-                        else
-                        {
-                            //We get person
-                            Person pers = await FaceServiceHelper.GetPersonAsync(groupName, c.PersonId);
-                            dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = c.PersonId;
-                            if (pers.PersistedFaceIds.Length == 248)
-                            {
-                                       Guid persistedFaceId = pers.PersistedFaceIds.OrderBy(x => Guid.NewGuid()).FirstOrDefault();
-                                       await FaceServiceHelper.DeletePersonFaceAsync(groupName, c.PersonId, persistedFaceId);
-                            }
-                            await FaceServiceHelper.AddPersonFaceAsync(groupName, c.PersonId, await this.GetImageStreamCallback(), "", f.FaceRectangle);
-                        }
+                        await FaceServiceHelper.AddPersonFaceAsync(groupName, c.PersonId, await this.GetImageStreamCallback(), "", f.FaceRectangle);
                     }
+                    //}
                 }
                 else
                 {
@@ -312,7 +315,11 @@ namespace ServiceHelpers
                     {
                         //No candidate we are going to create new person
                         newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupName, newPersonID.ToString())).PersonId;
-                        dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = newPersonID;
+                        Candidate c = new Candidate() { Confidence = 1, PersonId = newPersonID };
+                        var candidates = new List<Candidate>();
+                        candidates.Add(c);
+                        dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().Candidates = candidates;
+
                         await FaceServiceHelper.AddPersonFaceAsync(groupName, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
                     }
                     catch (Exception)
