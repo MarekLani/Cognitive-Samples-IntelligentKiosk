@@ -31,6 +31,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using Microsoft.ProjectOxford.Common;
 using Microsoft.ProjectOxford.Emotion.Contract;
 using Microsoft.ProjectOxford.Face;
 using Microsoft.ProjectOxford.Face.Contract;
@@ -44,7 +45,7 @@ namespace ServiceHelpers
 {
     public class ImageAnalyzer
     {
-        private static FaceAttributeType[] DefaultFaceAttributeTypes = new FaceAttributeType[] { FaceAttributeType.Age, FaceAttributeType.Gender };
+        private static FaceAttributeType[] DefaultFaceAttributeTypes = new FaceAttributeType[] { FaceAttributeType.Age, FaceAttributeType.FacialHair, FaceAttributeType.Glasses, FaceAttributeType.Smile, FaceAttributeType.Gender, FaceAttributeType.HeadPose };
 
         public event EventHandler FaceDetectionCompleted;
         public event EventHandler FaceRecognitionCompleted;
@@ -109,7 +110,7 @@ namespace ServiceHelpers
                         this.ImageUrl,
                         returnFaceId: true,
                         returnFaceLandmarks: false,
-                        returnFaceAttributes: detectFaceAttributes ? DefaultFaceAttributeTypes : null);
+                        returnFaceAttributes: DefaultFaceAttributeTypes);
                 }
                 else if (this.GetImageStreamCallback != null)
                 {
@@ -117,7 +118,8 @@ namespace ServiceHelpers
                         await this.GetImageStreamCallback(),
                         returnFaceId: true,
                         returnFaceLandmarks: false,
-                        returnFaceAttributes: detectFaceAttributes ? DefaultFaceAttributeTypes : null);
+                        //returnFaceAttributes: detectFaceAttributes ? DefaultFaceAttributeTypes : null);
+                        returnFaceAttributes: DefaultFaceAttributeTypes);
                 }
 
                 if (this.FilterOutSmallFaces)
@@ -153,6 +155,47 @@ namespace ServiceHelpers
                 else if (this.GetImageStreamCallback != null)
                 {
                     this.DetectedEmotion = await EmotionServiceHelper.RecognizeAsync(await this.GetImageStreamCallback());
+                }
+
+                if (this.FilterOutSmallFaces)
+                {
+                    this.DetectedEmotion = this.DetectedEmotion.Where(f => CoreUtil.IsFaceBigEnoughForDetection(f.FaceRectangle.Height, this.DecodedImageHeight));
+                }
+            }
+            catch (Exception e)
+            {
+                ErrorTrackingHelper.TrackException(e, "Emotion API RecognizeAsync error");
+
+                this.DetectedEmotion = Enumerable.Empty<Emotion>();
+
+                if (this.ShowDialogOnFaceApiErrors)
+                {
+                    await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Emotion detection failed.");
+                }
+            }
+            finally
+            {
+                this.OnEmotionRecognitionCompleted();
+            }
+        }
+
+        public async Task DetectEmotionWithRectanglesAsync()
+        {
+            try
+            {
+                var rectangles = new List<Rectangle>();
+                foreach (var f in this.DetectedFaces)
+                {
+                    Rectangle r = new Rectangle() { Top = f.FaceRectangle.Top, Height = f.FaceRectangle.Height, Left = f.FaceRectangle.Left, Width = f.FaceRectangle.Width };
+                    rectangles.Add(r);
+                }
+                if (this.ImageUrl != null)
+                {
+                    this.DetectedEmotion = await EmotionServiceHelper.RecognizeWithFaceRectanglesAsync(this.ImageUrl,rectangles.ToArray());
+                }
+                else if (this.GetImageStreamCallback != null)
+                {
+                    this.DetectedEmotion = await EmotionServiceHelper.RecognizeWithFaceRectanglesAsync(await this.GetImageStreamCallback(),rectangles.ToArray());
                 }
 
                 if (this.FilterOutSmallFaces)
@@ -251,16 +294,51 @@ namespace ServiceHelpers
             this.OnFaceRecognitionCompleted();
         }
 
-        public async Task<List<DetectedAndIdentifiedFaceWithEmotions>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, double confidence)
+        public async Task<List<FaceSendInfo>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, double confidence)
         {
+            var time = DateTime.Now;
             //We also add emotions
-            var dfwes = new List<DetectedAndIdentifiedFaceWithEmotions>();
+            var facesInfo = new List<FaceSendInfo>();
             foreach (var f in this.DetectedFaces)
             {
-                var dfwe = new DetectedAndIdentifiedFaceWithEmotions() { Face = f };
-                dfwe.Emotion = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
-                dfwe.TimeStamp = DateTime.Now;
-                dfwes.Add(dfwe);
+                var fsi = new FaceSendInfo();
+                var e = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
+
+                fsi.faceId = f.FaceId.ToString();
+                fsi.age = f.FaceAttributes.Age;
+
+                fsi.faceRecHeight = f.FaceRectangle.Height;
+                fsi.faceRecLeft = f.FaceRectangle.Left;
+                fsi.faceRecTop = f.FaceRectangle.Top;
+                fsi.faceRecWidth = f.FaceRectangle.Width;
+
+                fsi.gender = f.FaceAttributes.Gender;
+
+                fsi.smile = f.FaceAttributes.Smile;
+
+                fsi.beard = f.FaceAttributes.FacialHair.Beard;
+                fsi.moustache = f.FaceAttributes.FacialHair.Moustache;
+                fsi.sideburns = f.FaceAttributes.FacialHair.Sideburns;
+
+                fsi.glasses = f.FaceAttributes.Glasses;
+
+                fsi.headYaw = f.FaceAttributes.HeadPose.Yaw;
+                fsi.headRoll = f.FaceAttributes.HeadPose.Roll;
+                fsi.headPitch = f.FaceAttributes.HeadPose.Pitch;
+
+                fsi.anger = e.Scores.Anger;
+                fsi.contempt = e.Scores.Contempt;
+                fsi.disgust = e.Scores.Disgust;
+                fsi.fear = e.Scores.Fear;
+                fsi.happiness = e.Scores.Happiness;
+                fsi.neutral = e.Scores.Neutral;
+                fsi.sadness = e.Scores.Sadness;
+                fsi.surprise = e.Scores.Surprise;
+                
+                fsi.timeStamp = time;
+                fsi.facesNo = this.DetectedFaces.Count();
+
+                facesInfo.Add(fsi);
             }
             var newPersonID = Guid.NewGuid();
             //Move to initialization
@@ -279,8 +357,16 @@ namespace ServiceHelpers
                 await Task.WhenAll(this.IdentifyFacesInSingleGroupAsync(groupName,f.FaceId));
                 if (this.Candidates != null && this.Candidates.Candidates != null && this.Candidates.Candidates.Any())
                 {
-
-                    dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().Candidates = this.Candidates.Candidates.OrderByDescending(ca => ca.Confidence).ToList();
+                    var candidates = new List<CandidateWithName>();
+                    
+                    //We need to get also name 
+                    foreach(var can in this.Candidates.Candidates)
+                    {
+                        var p = await FaceServiceHelper.GetPersonAsync(groupName, can.PersonId);
+                        CandidateWithName cwn = new CandidateWithName() { personId = p.PersonId.ToString(), confidence = can.Confidence, name = p.Name };
+                        candidates.Add(cwn);
+                    }
+                    facesInfo.Where(i => i.faceId == f.FaceId.ToString()).FirstOrDefault().candidates = candidates;
                     //We have candidates
                     //For now we are returning all candidates
                     var c = this.Candidates.Candidates.OrderByDescending(ca => ca.Confidence).FirstOrDefault();
@@ -315,10 +401,8 @@ namespace ServiceHelpers
                     {
                         //No candidate we are going to create new person
                         newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupName, newPersonID.ToString())).PersonId;
-                        Candidate c = new Candidate() { Confidence = 1, PersonId = newPersonID };
-                        var candidates = new List<Candidate>();
-                        candidates.Add(c);
-                        dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().Candidates = candidates;
+                        //CandidateWithName c = new CandidateWithName() { confidence = 1, personId = newPersonID.ToString(), name = newPersonID.ToString() };
+                        //facesInfo.Where(i => i.faceId == f.FaceId.ToString()).FirstOrDefault().candidates = new List<CandidateWithName>() {c};
 
                         await FaceServiceHelper.AddPersonFaceAsync(groupName, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
                     }
@@ -333,7 +417,7 @@ namespace ServiceHelpers
                 {}
             }
             
-            return dfwes;
+            return facesInfo;
         }
 
         public async Task IdentifyFacesInSingleGroupAsync(string personGroupName, Guid faceId)
@@ -476,4 +560,147 @@ namespace ServiceHelpers
             get; set;
         }
     }
+
+
+    public class FaceSendInfo
+    {
+        public string faceId { get; set; }
+
+        public int faceRecWidth { get; set; }
+        public int faceRecHeight { get; set; }
+        public int faceRecLeft { get; set; }
+        public int faceRecTop { get; set; }
+
+
+        private double _age;
+        public double age
+        {
+            get { return _age; }
+            set { _age = Math.Round(value, 1); }
+        }
+
+        public string gender { get; set; }
+
+        private double _headRoll;
+        public double headRoll
+        {
+            get { return _headRoll; }
+            set { _headRoll = Math.Round(value, 1); }
+        }
+
+        private double _headYaw;
+        public double headYaw
+        {
+            get { return _headYaw; }
+            set { _headYaw = Math.Round(value, 1); }
+        }
+
+        private double _headPitch;
+        public double headPitch
+        {
+            get { return _headPitch; }
+            set { _headPitch = Math.Round(value, 1); }
+        }
+
+        private double _smile;
+        public double smile
+        {
+            get { return _smile; }
+            set { _smile = Math.Round(value, 3); }
+        }
+
+        private double _moustache;
+        public double moustache
+        {
+            get { return _moustache; }
+            set { _moustache = Math.Round(value, 1); }
+        }
+
+        private double _beard;
+        public double beard
+        {
+            get { return _beard; }
+            set { _beard = Math.Round(value, 1); }
+        }
+
+        private double _sideburns;
+        public double sideburns
+        {
+            get { return _sideburns; }
+            set { _sideburns = Math.Round(value, 1); }
+        }
+
+        public Glasses glasses { get; set; }
+
+        private double _anger;
+        public double anger
+        {
+            get { return _anger; }
+            set { _anger = Math.Round(value, 3); }
+        }
+
+        private double _contempt;
+        public double contempt
+        {
+            get { return _contempt; }
+            set { _contempt = Math.Round(value, 3); }
+        }
+
+        private double _disgust;
+        public double disgust
+        {
+            get { return _disgust; }
+            set { _disgust = Math.Round(value, 3); }
+        }
+
+        private double _fear;
+        public double fear
+        {
+            get { return _fear; }
+            set { _fear = Math.Round(value, 3); }
+        }
+
+        private double _happiness;
+        public double happiness
+        {
+            get { return _happiness; }
+            set { _happiness = Math.Round(value, 3); }
+        }
+
+        private double _neutral;
+        public double neutral
+        {
+            get { return _neutral; }
+            set { _neutral = Math.Round(value, 3); }
+        }
+
+        private double _sadness;
+        public double sadness
+        {
+            get { return _sadness; }
+            set { _sadness = Math.Round(value, 3); }
+        }
+
+        private double _surprise;
+        public double surprise
+        {
+            get { return _surprise; }
+            set { _surprise = Math.Round(value, 3); }
+        }
+
+        public DateTime timeStamp { get; set; }
+
+        public int facesNo { get; set; }
+
+        public List<CandidateWithName> candidates { get; set; }
+
+    }
+
+    public class CandidateWithName
+    {
+        public string personId { get; set; }
+        public string name { get; set; }
+        public double confidence { get; set; }
+    }
+
 }

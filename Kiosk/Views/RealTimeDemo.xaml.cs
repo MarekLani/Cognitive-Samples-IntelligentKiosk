@@ -186,39 +186,50 @@ namespace IntelligentKioskSample.Views
 
             try
             {
-                await Task.WhenAll(e.DetectEmotionAsync(), e.DetectFacesAsync(detectFaceAttributes: true));
+                await e.DetectFacesAsync(detectFaceAttributes: true);
+
+                //It is cheaper to detect emotions with rectangles posted
+                await e.DetectEmotionWithRectanglesAsync();
+
                 //We need to summarize information into one object
-                
 
-                List<DetectedAndIdentifiedFaceWithEmotions> dfwes = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, SettingsHelper.Instance.Confidence);
 
-                foreach(var f in dfwes)
+                List<FaceSendInfo> facesToSend = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, SettingsHelper.Instance.Confidence);
+
+                foreach (var f in facesToSend)
                 {
-                    foreach(var c in f.Candidates)
-                    if(!identifiedPersonsIdCollection.Where(ip => ip.Id == c.PersonId.ToString()).Any())
-                    {
-                        identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = c.PersonId.ToString() });      
-                    }
-                    else
-                    {
-                      identifiedPersonsIdCollection.Where(ip => ip.Id == c.PersonId.ToString()).FirstOrDefault().NumberOfIdentifications++;
-                    }
+                    foreach (var c in f.candidates)
+                        if (!identifiedPersonsIdCollection.Where(ip => ip.Id == c.personId).Any())
+                        {
+                            identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = c.personId });
+                        }
+                        else
+                        {
+                            identifiedPersonsIdCollection.Where(ip => ip.Id == c.personId).FirstOrDefault().NumberOfIdentifications++;
+                        }
                 }
-                foreach(var ip in identifiedPersonsIdCollection)
+                foreach (var ip in identifiedPersonsIdCollection)
                 {
-                    if(ip.NumberOfIdentifications <=  1 && (ip.CreatedAt - DateTime.Now).Seconds > SettingsHelper.Instance.DeleteWindow){
-                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName,  new Guid(ip.Id));
+                    if (ip.NumberOfIdentifications <= 1 && (ip.CreatedAt - DateTime.Now).Seconds > SettingsHelper.Instance.DeleteWindow)
+                    {
+                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName, new Guid(ip.Id));
                         //if we saved only one face then delete
-                        if (pers.PersistedFaceIds.Length == 1) {
-                           await FaceServiceHelper.DeletePersonAsync(SettingsHelper.Instance.GroupName, pers.PersonId);
-                           ip.Deleted = Visibility.Visible;
+                        if (pers.PersistedFaceIds.Length == 1)
+                        {
+                            await FaceServiceHelper.DeletePersonAsync(SettingsHelper.Instance.GroupName, pers.PersonId);
+                            ip.Deleted = Visibility.Visible;
                         }
                     }
-                        
                 }
                 //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
                 //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
-                await Util.CallEventHubHttp(JsonConvert.SerializeObject(dfwes));
+
+                //sending onemessage per face
+                foreach (var fts in facesToSend)
+                {
+                    await Util.CallEventHubHttp(JsonConvert.SerializeObject(fts));
+                }
+                //await Util.CallEventHubHttp(JsonConvert.SerializeObject(facesToSend));
 
                 //Updating Emotions UI, No need it final version
                 if (!e.DetectedEmotion.Any())
@@ -246,14 +257,35 @@ namespace IntelligentKioskSample.Views
                     //this.emotionDataTimelineControl.DrawEmotionData(averageScores);
                 }
 
-                if (e.DetectedFaces == null || !e.DetectedFaces.Any())
+
+
+                this.lastIdentifiedPersonSample = null;
+
+                var detectedFaces = new List<Tuple<Face, IdentifiedPerson>>();
+                foreach (var fsi in facesToSend)
                 {
-                    this.lastDetectedFaceSample = null;
+                    if (fsi.candidates != null && fsi.candidates.Any())
+                    {
+                        Face f = new Face() { FaceId = new Guid(fsi.faceId), FaceRectangle = new FaceRectangle() { Height = fsi.faceRecHeight, Left = fsi.faceRecLeft, Top = fsi.faceRecTop, Width = fsi.faceRecWidth } };
+                        IdentifiedPerson ip = new IdentifiedPerson() { Confidence = fsi.candidates.FirstOrDefault().confidence, FaceId = new Guid(fsi.faceId), Person = new Person() { Name = fsi.candidates.FirstOrDefault().name, PersonId = new Guid(fsi.candidates.FirstOrDefault().personId) } };
+                        detectedFaces.Add(new Tuple<Face, IdentifiedPerson>(f, ip));
+                    }
                 }
-                else
-                {
-                    this.lastDetectedFaceSample = e.DetectedFaces;
-                }
+                if (detectedFaces.Any())
+                    this.lastIdentifiedPersonSample = detectedFaces;
+            
+                
+
+                //if (!e.SimilarFaceMatches.Any())
+                //{
+                //    this.lastSimilarPersistedFaceSample = null;
+                //}
+                //else
+                //{
+                //    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
+                //}
+
+
             }
             catch (Exception ex) {
                 }

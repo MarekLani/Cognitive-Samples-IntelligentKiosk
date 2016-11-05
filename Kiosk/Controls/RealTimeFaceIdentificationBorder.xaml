@@ -11,16 +11,16 @@
 
     <Grid>
         <Rectangle x:Name="faceRectangle" Stroke="White" Visibility="Visible" HorizontalAlignment="Left" VerticalAlignment="Top" />
-        <Border x:Name="captionBorder" Visibility="Collapsed" VerticalAlignment="Top" HorizontalAlignment="Left" Width="300" Height="40" >
-            <StackPanel Orientation="Horizontal" FlowDirection="LeftToRight" HorizontalAlignment="Center">
+        <Border x:Name="captionBorder" Visibility="Collapsed" Background="#FF1F1F1F" VerticalAlignment="Top" HorizontalAlignment="Left" Width="300" Height="80" >
+            <StackPanel Orientation="Vertical" FlowDirection="LeftToRight" HorizontalAlignment="Center">
                 <Border  Background="#FF1F1F1F">
                     <StackPanel Orientation="Vertical" VerticalAlignment="Center" >
-                        <TextBlock x:Name="captionTextHeader" Margin="6,0,6,0" Foreground="LightGray" FontFamily="Segoe UI Semilight" />
-                        <TextBlock x:Name="captionTextSubHeader" Margin="6,0,6,0" Foreground="LightGray" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" FontFamily="Segoe UI Semilight" />
+                        <TextBlock x:Name="captionTextHeader" Margin="6,0,6,0" FontSize="10" Foreground="LightGray" FontFamily="Segoe UI Semilight" />
+                        <TextBlock x:Name="captionTextSubHeader" Margin="6,0,6,0" FontSize="10" Foreground="LightGray" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" FontFamily="Segoe UI Semilight" />
                     </StackPanel>
                 </Border>
 
-                <local:EmotionEmojiControl x:Name="emotionEmojiControl" VerticalAlignment="Center" />
+                <local:EmotionEmojiControl x:Name="emotionEmojiControl" VerticalAlignment="Center" HorizontalAlignment="Center" />
             </StackPanel>
         </Border>
     </Grid>

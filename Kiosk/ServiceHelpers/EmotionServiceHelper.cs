@@ -34,6 +34,7 @@
 using Microsoft.ProjectOxford.Common;
 using Microsoft.ProjectOxford.Emotion;
 using Microsoft.ProjectOxford.Emotion.Contract;
+using Microsoft.ProjectOxford.Face.Contract;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -122,6 +123,16 @@ namespace ServiceHelpers
         public static async Task<Emotion[]> RecognizeAsync(Stream imageStream)
         {
             return await RunTaskWithAutoRetryOnQuotaLimitExceededError<Emotion[]>(() => emotionClient.RecognizeAsync(imageStream));
+        }
+
+        public static async Task<Emotion[]> RecognizeWithFaceRectanglesAsync(Stream imageStream, Rectangle[] faceRectangles)
+        {
+            return await RunTaskWithAutoRetryOnQuotaLimitExceededError<Emotion[]>(() => emotionClient.RecognizeAsync(imageStream, faceRectangles));
+        }
+
+        public static async Task<Emotion[]> RecognizeWithFaceRectanglesAsync(string imageUrl, Rectangle[] faceRectangles)
+        {
+            return await RunTaskWithAutoRetryOnQuotaLimitExceededError<Emotion[]>(() => emotionClient.RecognizeAsync(imageUrl, faceRectangles));
         }
 
         public static async Task<Emotion[]> RecognizeAsync(string url)

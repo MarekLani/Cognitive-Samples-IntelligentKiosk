@@ -118,8 +118,8 @@ namespace ServiceHelpers
         {
             
             //await faceClient.DeletePersonGroupAsync("111");
-            var groups = await faceClient.GetPersonGroupsAsync();
-            if(!groups.Where(g => g.PersonGroupId == personGroupId).Any())
+            var groups = await faceClient.ListPersonGroupsAsync();
+            if(groups!= null && !groups.Where(g => g.PersonGroupId == personGroupId).Any())
                 await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(personGroupId, name));
             
         }
