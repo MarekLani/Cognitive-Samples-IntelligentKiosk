@@ -114,14 +114,22 @@ namespace ServiceHelpers
             await RunTaskWithAutoRetryOnQuotaLimitExceededError<object>(async () => { await action(); return null; });
         }
 
-        public static async Task CreatePersonIfNoGroupExists(string personGroupId, string name)
+        public static async Task<PersonGroup> CreatePersonGroupIfNoGroupExists( string name)
         {
             
             //await faceClient.DeletePersonGroupAsync("111");
             var groups = await faceClient.ListPersonGroupsAsync();
-            if(groups!= null && !groups.Where(g => g.PersonGroupId == personGroupId).Any())
-                await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(personGroupId, name));
-            
+            if (groups != null && !groups.Where(g => g.Name == name).Any())
+            {
+                var newGroupId = new Guid();
+                await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(newGroupId.ToString(), name));
+                groups = await faceClient.ListPersonGroupsAsync();
+                return groups.Where(g => g.PersonGroupId == newGroupId.ToString()).FirstOrDefault();
+            }
+            else
+                return groups.Where(g => g.Name == name).FirstOrDefault();
+
+
         }
 
         public static async Task CreatePersonGroupAsync(string personGroupId, string name, string userData)
@@ -196,7 +204,7 @@ namespace ServiceHelpers
 
         public static async Task<IdentifyResult[]> IdentifyAsync(string personGroupId, Guid[] detectedFaceIds)
         {
-            return await RunTaskWithAutoRetryOnQuotaLimitExceededError<IdentifyResult[]>(() => faceClient.IdentifyAsync(personGroupId, detectedFaceIds));
+            return await RunTaskWithAutoRetryOnQuotaLimitExceededError<IdentifyResult[]>(() => faceClient.IdentifyAsync(personGroupId, detectedFaceIds,5));
         }
 
         public static async Task DeletePersonAsync(string personGroupId, Guid personId)

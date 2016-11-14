@@ -127,15 +127,17 @@ namespace IntelligentKioskSample
             // Place our app shell in the current Window
             Window.Current.Content = shell;
 
-            if (shell.AppFrame.Content == null)
-            {
-                // When the navigation stack isn't restored, navigate to the first page
-                // suppressing the initial entrance animation.
-                shell.AppFrame.Navigate(typeof(RealTimeDemo), e.Arguments, new Windows.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
-            }
+            //if (shell.AppFrame.Content == null)
+            //{
+            //    // When the navigation stack isn't restored, navigate to the first page
+            //    // suppressing the initial entrance animation.
+            //    //shell.AppFrame.Navigate(typeof(RealTimeDemo), e.Arguments, new Windows.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
+            //}
 
             // Ensure the current window is active
             Window.Current.Activate();
+            //We need to navigate after window activation
+            shell.AppFrame.Navigate(typeof(RealTimeDemo));
         }
 
         private static void ShowThrottlingToast(string api)

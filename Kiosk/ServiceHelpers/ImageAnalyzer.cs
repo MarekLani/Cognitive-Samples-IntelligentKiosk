@@ -46,6 +46,7 @@ namespace ServiceHelpers
     public class ImageAnalyzer
     {
         private static FaceAttributeType[] DefaultFaceAttributeTypes = new FaceAttributeType[] { FaceAttributeType.Age, FaceAttributeType.FacialHair, FaceAttributeType.Glasses, FaceAttributeType.Smile, FaceAttributeType.Gender, FaceAttributeType.HeadPose };
+        private string groupId = null;
 
         public event EventHandler FaceDetectionCompleted;
         public event EventHandler FaceRecognitionCompleted;
@@ -344,17 +345,27 @@ namespace ServiceHelpers
             //Move to initialization
             try
             {
-                await FaceServiceHelper.CreatePersonIfNoGroupExists(groupName, groupName);
+                
+                var g = await FaceServiceHelper.CreatePersonGroupIfNoGroupExists(groupName);
+                groupId = g.PersonGroupId;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
+                // Catch errors with individual groups so we can continue looping through all groups. Maybe an answer will come from
+                // another one.
+                ErrorTrackingHelper.TrackException(e, "Problem creating group");
+
+                if (this.ShowDialogOnFaceApiErrors)
+                {
+                    await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Problem creating group");
+                }
             }
 
 
             // Compute Face Identification and Unique Face Ids
             //We need to map detected faceID with actual faceID (Identified faceID)
             foreach (var f in this.DetectedFaces) {
-                await Task.WhenAll(this.IdentifyFacesInSingleGroupAsync(groupName,f.FaceId));
+                await Task.WhenAll(this.IdentifyFacesInSingleGroupAsync(groupId,f.FaceId));
                 if (this.Candidates != null && this.Candidates.Candidates != null && this.Candidates.Candidates.Any())
                 {
                     var candidates = new List<CandidateWithName>();
@@ -362,7 +373,7 @@ namespace ServiceHelpers
                     //We need to get also name 
                     foreach(var can in this.Candidates.Candidates)
                     {
-                        var p = await FaceServiceHelper.GetPersonAsync(groupName, can.PersonId);
+                        var p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
                         CandidateWithName cwn = new CandidateWithName() { personId = p.PersonId.ToString(), confidence = can.Confidence, name = p.Name };
                         candidates.Add(cwn);
                     }
@@ -383,16 +394,29 @@ namespace ServiceHelpers
                     if(c.Confidence >= confidence)
                     {
                         //We get person
-                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName, c.PersonId);
+                        Person pers = await FaceServiceHelper.GetPersonAsync(groupId, c.PersonId);
                         //dfwes.Where(i => i.Face.FaceId == f.FaceId).FirstOrDefault().PersonId = c.PersonId;
                         if (pers.PersistedFaceIds.Length == 248)
                         {
                             Guid persistedFaceId = pers.PersistedFaceIds.OrderBy(x => Guid.NewGuid()).FirstOrDefault();
-                            await FaceServiceHelper.DeletePersonFaceAsync(groupName, c.PersonId, persistedFaceId);
+                            await FaceServiceHelper.DeletePersonFaceAsync(groupId, c.PersonId, persistedFaceId);
                         }
-                        await FaceServiceHelper.AddPersonFaceAsync(groupName, c.PersonId, await this.GetImageStreamCallback(), "", f.FaceRectangle);
+                        try { 
+                        await FaceServiceHelper.AddPersonFaceAsync(groupId, c.PersonId, await this.GetImageStreamCallback(), "", f.FaceRectangle);
+
+                        }
+                        catch (Exception e)
+                        {
+                            // Catch errors with individual groups so we can continue looping through all groups. Maybe an answer will come from
+                            // another one.
+                            ErrorTrackingHelper.TrackException(e, "Problem adding face to group");
+
+                            if (this.ShowDialogOnFaceApiErrors)
+                            {
+                                await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Problem adding face to group");
+                            }
+                        }
                     }
-                    //}
                 }
                 else
                 {
@@ -400,42 +424,60 @@ namespace ServiceHelpers
                     try
                     {
                         //No candidate we are going to create new person
-                        newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupName, newPersonID.ToString())).PersonId;
+                        newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupId, newPersonID.ToString())).PersonId;
                         //CandidateWithName c = new CandidateWithName() { confidence = 1, personId = newPersonID.ToString(), name = newPersonID.ToString() };
                         //facesInfo.Where(i => i.faceId == f.FaceId.ToString()).FirstOrDefault().candidates = new List<CandidateWithName>() {c};
 
-                        await FaceServiceHelper.AddPersonFaceAsync(groupName, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
+                        await FaceServiceHelper.AddPersonFaceAsync(groupId, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
                     }
-                    catch (Exception)
-                    {}
+                    catch (Exception e)
+                    {
+                        // Catch errors with individual groups so we can continue looping through all groups. Maybe an answer will come from
+                        // another one.
+                        ErrorTrackingHelper.TrackException(e, "Problem adding face to group");
+
+                        if (this.ShowDialogOnFaceApiErrors)
+                        {
+                            await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Problem adding face to group");
+                        }
+                    }
                 }
                 try
                 {
-                    await FaceServiceHelper.TrainPersonGroupAsync(groupName);
+                    await FaceServiceHelper.TrainPersonGroupAsync(groupId);
                 }
-                catch (Exception)
-                {}
+                catch (Exception e)
+                {
+                    // Catch errors with individual groups so we can continue looping through all groups. Maybe an answer will come from
+                    // another one.
+                    ErrorTrackingHelper.TrackException(e, "Problem training group");
+
+                    if (this.ShowDialogOnFaceApiErrors)
+                    {
+                        await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Problem training group");
+                    }
+                }
             }
             
             return facesInfo;
         }
 
-        public async Task IdentifyFacesInSingleGroupAsync(string personGroupName, Guid faceId)
+        public async Task IdentifyFacesInSingleGroupAsync(string personGroupId, Guid faceId)
         {
             this.IdentifiedPersons = Enumerable.Empty<IdentifiedPerson>();
 
             Guid[] detectedFaceIds = new Guid[] { faceId };
-
+            PersonGroup personGroup = null;
             try {
                 if (detectedFaceIds != null && detectedFaceIds.Any())
                 {
                     List<IdentifiedPerson> result = new List<IdentifiedPerson>();
-                    PersonGroup personGroup = null;
+                    
 
                     try
                     {
                         var groups = await FaceServiceHelper.GetPersonGroupsAsync();
-                        personGroup = groups.Where(g => g.PersonGroupId == personGroupName).FirstOrDefault();
+                        personGroup = groups.Where(g => g.PersonGroupId == personGroupId).FirstOrDefault();
                     }
                     catch (Exception e)
                     {
@@ -456,6 +498,15 @@ namespace ServiceHelpers
 
             catch (Exception e)
             {
+                FaceAPIException fae = null;
+                if (e.GetType() == typeof(FaceAPIException))
+                    fae = e as FaceAPIException;
+
+                if(fae != null && fae.ErrorMessage.Contains("not trained") && personGroup != null)
+                {
+                    await FaceServiceHelper.TrainPersonGroupAsync(personGroup.PersonGroupId);
+                    this.Candidates = (await FaceServiceHelper.IdentifyAsync(personGroup.PersonGroupId, detectedFaceIds)).FirstOrDefault();
+                }
                 // Catch errors with individual groups so we can continue looping through all groups. Maybe an answer will come from
                 // another one.
                 ErrorTrackingHelper.TrackException(e, "Face API IdentifyAsync error");

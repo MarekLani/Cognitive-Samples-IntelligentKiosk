@@ -86,9 +86,10 @@ namespace IntelligentKioskSample.Views
             public IdentifiedFaces()
             {
                 CreatedAt = DateTime.Now;
+                NumberOfIdentifications = 1;
             }
 
-            public int NumberOfIdentifications { get; set; } = 0;
+            public int NumberOfIdentifications { get; set; }
             public Visibility Deleted { get; set; } = Visibility.Collapsed;
         }
 
@@ -212,11 +213,12 @@ namespace IntelligentKioskSample.Views
                 {
                     if (ip.NumberOfIdentifications <= 1 && (ip.CreatedAt - DateTime.Now).Seconds > SettingsHelper.Instance.DeleteWindow)
                     {
-                        Person pers = await FaceServiceHelper.GetPersonAsync(groupName, new Guid(ip.Id));
+                        var g = (await FaceServiceHelper.GetPersonGroupsAsync()).Where(gr => gr.Name == groupName).FirstOrDefault();
+                        Person pers = await FaceServiceHelper.GetPersonAsync(g.PersonGroupId, new Guid(ip.Id));
                         //if we saved only one face then delete
                         if (pers.PersistedFaceIds.Length == 1)
                         {
-                            await FaceServiceHelper.DeletePersonAsync(SettingsHelper.Instance.GroupName, pers.PersonId);
+                            await FaceServiceHelper.DeletePersonAsync(g.PersonGroupId, pers.PersonId);
                             ip.Deleted = Visibility.Visible;
                         }
                     }
@@ -258,6 +260,15 @@ namespace IntelligentKioskSample.Views
                 }
 
 
+                if (e.DetectedFaces == null || !e.DetectedFaces.Any())
+                {
+                    this.lastDetectedFaceSample = null;
+                }
+                else
+                {
+                    this.lastDetectedFaceSample = e.DetectedFaces;
+                }
+
 
                 this.lastIdentifiedPersonSample = null;
 
@@ -273,23 +284,24 @@ namespace IntelligentKioskSample.Views
                 }
                 if (detectedFaces.Any())
                     this.lastIdentifiedPersonSample = detectedFaces;
-            
-                
 
-                //if (!e.SimilarFaceMatches.Any())
-                //{
-                //    this.lastSimilarPersistedFaceSample = null;
-                //}
-                //else
-                //{
-                //    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
-                //}
+
+
+                if (e.SimilarFaceMatches != null && !e.SimilarFaceMatches.Any())
+                {
+                    this.lastSimilarPersistedFaceSample = null;
+                }
+                else
+                {
+                    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
+                }
 
 
             }
             catch (Exception ex) {
-                }
-
+                debugText.Text = ex.Message;
+            }
+            finally { this.isProcessingPhoto = false; }
             //this.UpdateDemographics(e);
             this.isProcessingPhoto = false;
            
@@ -319,6 +331,8 @@ namespace IntelligentKioskSample.Views
                 await this.cameraControl.StartStreamAsync(isForRealTimeProcessing: true);
                 this.StartProcessingLoop();
             }
+
+            this.cameraControl.ShowDialogOnApiErrors =  SettingsHelper.Instance.ShowDebugInfo;
 
             base.OnNavigatedTo(e);
         }
@@ -402,21 +416,21 @@ namespace IntelligentKioskSample.Views
 
         private async Task ResetDemographicsData()
         {
-            this.initializingUI.Visibility = Visibility.Visible;
-            this.initializingProgressRing.IsActive = true;
+            //this.initializingUI.Visibility = Visibility.Visible;
+            //this.initializingProgressRing.IsActive = true;
 
-            this.demographics = new DemographicsData
-            {
-                StartTime = DateTime.Now,
-                AgeGenderDistribution = new AgeGenderDistribution { FemaleDistribution = new AgeDistribution(), MaleDistribution = new AgeDistribution() },
-                Visitors = new List<Visitor>()
-            };
+            //this.demographics = new DemographicsData
+            //{
+            //    StartTime = DateTime.Now,
+            //    AgeGenderDistribution = new AgeGenderDistribution { FemaleDistribution = new AgeDistribution(), MaleDistribution = new AgeDistribution() },
+            //    Visitors = new List<Visitor>()
+            //};
 
-            this.visitors.Clear();
-            await FaceListManager.ResetFaceLists();
+            //this.visitors.Clear();
+            //await FaceListManager.ResetFaceLists();
 
-            this.initializingUI.Visibility = Visibility.Collapsed;
-            this.initializingProgressRing.IsActive = false;
+            //this.initializingUI.Visibility = Visibility.Collapsed;
+            //this.initializingProgressRing.IsActive = false;
         }
 
         public async Task HandleApplicationShutdownAsync()
