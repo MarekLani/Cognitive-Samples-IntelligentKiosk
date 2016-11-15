@@ -121,7 +121,7 @@ namespace ServiceHelpers
             var groups = await faceClient.ListPersonGroupsAsync();
             if (groups != null && !groups.Where(g => g.Name == name).Any())
             {
-                var newGroupId = new Guid();
+                var newGroupId = Guid.NewGuid();
                 await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.CreatePersonGroupAsync(newGroupId.ToString(), name));
                 groups = await faceClient.ListPersonGroupsAsync();
                 return groups.Where(g => g.PersonGroupId == newGroupId.ToString()).FirstOrDefault();

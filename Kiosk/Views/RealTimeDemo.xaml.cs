@@ -199,29 +199,38 @@ namespace IntelligentKioskSample.Views
 
                 foreach (var f in facesToSend)
                 {
-                    foreach (var c in f.candidates)
-                        if (!identifiedPersonsIdCollection.Where(ip => ip.Id == c.personId).Any())
-                        {
-                            identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = c.personId });
-                        }
-                        else
-                        {
-                            identifiedPersonsIdCollection.Where(ip => ip.Id == c.personId).FirstOrDefault().NumberOfIdentifications++;
-                        }
+                    if (!identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).Any())
+                    {
+                        identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = f.can1id });
+                    }
+                    //We are going to look only on first candidate, if there are more candidates for one face and 1st candidate is strongedt, it is probable, that we added one face by mistake
+                    else if (identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).Any())
+                    {
+                        identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).FirstOrDefault().NumberOfIdentifications++;
+                    }
                 }
+                var tbd = new List<IdentifiedFaces>();
                 foreach (var ip in identifiedPersonsIdCollection)
                 {
-                    if (ip.NumberOfIdentifications <= 1 && (ip.CreatedAt - DateTime.Now).Seconds > SettingsHelper.Instance.DeleteWindow)
+                    if (ip.NumberOfIdentifications <= 1 && (ip.CreatedAt.AddSeconds(SettingsHelper.Instance.DeleteWindow) < DateTime.Now))
                     {
                         var g = (await FaceServiceHelper.GetPersonGroupsAsync()).Where(gr => gr.Name == groupName).FirstOrDefault();
                         Person pers = await FaceServiceHelper.GetPersonAsync(g.PersonGroupId, new Guid(ip.Id));
+                        
                         //if we saved only one face then delete
-                        if (pers.PersistedFaceIds.Length == 1)
+                        if (pers.PersistedFaceIds.Length <= 1)
                         {
                             await FaceServiceHelper.DeletePersonAsync(g.PersonGroupId, pers.PersonId);
-                            ip.Deleted = Visibility.Visible;
+                            await FaceServiceHelper.TrainPersonGroupAsync(g.PersonGroupId);
+                            tbd.Add(ip);
                         }
                     }
+                }
+               
+                   
+                foreach (var iptodelete in tbd)
+                {
+                    identifiedPersonsIdCollection.Remove(iptodelete);
                 }
                 //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
                 //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
@@ -269,32 +278,24 @@ namespace IntelligentKioskSample.Views
                     this.lastDetectedFaceSample = e.DetectedFaces;
                 }
 
-
+                var list = new List<Tuple<Face, IdentifiedPerson>>();
+                  
                 this.lastIdentifiedPersonSample = null;
-
-                var detectedFaces = new List<Tuple<Face, IdentifiedPerson>>();
-                foreach (var fsi in facesToSend)
+                foreach(var ip in e.IdentifiedPersons)
                 {
-                    if (fsi.candidates != null && fsi.candidates.Any())
-                    {
-                        Face f = new Face() { FaceId = new Guid(fsi.faceId), FaceRectangle = new FaceRectangle() { Height = fsi.faceRecHeight, Left = fsi.faceRecLeft, Top = fsi.faceRecTop, Width = fsi.faceRecWidth } };
-                        IdentifiedPerson ip = new IdentifiedPerson() { Confidence = fsi.candidates.FirstOrDefault().confidence, FaceId = new Guid(fsi.faceId), Person = new Person() { Name = fsi.candidates.FirstOrDefault().name, PersonId = new Guid(fsi.candidates.FirstOrDefault().personId) } };
-                        detectedFaces.Add(new Tuple<Face, IdentifiedPerson>(f, ip));
-                    }
+                    list.Add(new Tuple<Face, IdentifiedPerson>(e.DetectedFaces.Where(fa => fa.FaceId == ip.FaceId).FirstOrDefault(), ip));
                 }
-                if (detectedFaces.Any())
-                    this.lastIdentifiedPersonSample = detectedFaces;
+                    if (list.Any())
+                        this.lastIdentifiedPersonSample = list;
 
-
-
-                if (e.SimilarFaceMatches != null && !e.SimilarFaceMatches.Any())
-                {
-                    this.lastSimilarPersistedFaceSample = null;
-                }
-                else
-                {
-                    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
-                }
+                //if (e.SimilarFaceMatches != null && !e.SimilarFaceMatches.Any())
+                //{
+                //    this.lastSimilarPersistedFaceSample = null;
+                //}
+                //else
+                //{
+                //    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
+                //}
 
 
             }
