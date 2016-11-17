@@ -131,14 +131,6 @@ namespace IntelligentKioskSample.Views
                 {
                     if (!this.isProcessingPhoto)
                     {
-                        //We do not need to update UI
-                        //if (DateTime.Now.Hour != this.demographics.StartTime.Hour)
-                        //{
-                        //    // We have been running through the hour. Reset the data...
-                        //await this.ResetDemographicsData();
-                        //this.UpdateDemographicsUI();
-                        //}
-
                         this.isProcessingPhoto = true;
                         if (this.cameraControl.NumFacesOnLastFrame == 0)
                         {

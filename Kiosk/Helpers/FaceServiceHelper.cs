@@ -206,9 +206,9 @@ namespace ServiceHelpers
             await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.AddPersonFaceAsync(personGroupId, personId, imageUrl, userData, targetFace));
         }
 
-        public static async Task AddPersonFaceAsync(string personGroupId, Guid personId, Stream imageStream, string userData, FaceRectangle targetFace)
+        public static async Task<AddPersistedFaceResult> AddPersonFaceAsync(string personGroupId, Guid personId, Stream imageStream, string userData, FaceRectangle targetFace)
         {
-            await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.AddPersonFaceAsync(personGroupId, personId, imageStream, userData, targetFace));
+            return await RunTaskWithAutoRetryOnQuotaLimitExceededError(() => faceClient.AddPersonFaceAsync(personGroupId, personId, imageStream, userData, targetFace));
         }
 
         public static async Task<IdentifyResult[]> IdentifyAsync(string personGroupId, Guid[] detectedFaceIds)

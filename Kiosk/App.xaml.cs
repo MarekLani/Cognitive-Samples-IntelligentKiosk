@@ -41,6 +41,7 @@ using Windows.UI.Xaml.Navigation;
 
 namespace IntelligentKioskSample
 {
+    using Microsoft.EntityFrameworkCore;
     using ServiceHelpers;
     using System.Diagnostics;
     using Views;
@@ -59,6 +60,12 @@ namespace IntelligentKioskSample
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+
+            using (var db = new KioskDBContext())
+            {
+                db.Database.Migrate();
+            }
+
         }
 
         /// <summary>

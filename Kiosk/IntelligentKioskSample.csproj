@@ -97,6 +97,7 @@
     <UseDotNetNativeToolchain>true</UseDotNetNativeToolchain>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="App.config" />
     <None Include="IntelligentKiosk_TemporaryKey.pfx" />
     <None Include="packages.config" />
     <None Include="project.json" />
@@ -132,6 +133,16 @@
     <Compile Include="Controls\EmotionEmojiControl.xaml.cs">
       <DependentUpon>EmotionEmojiControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DBModel.cs" />
+    <Compile Include="Helpers\BingSearchHelper.cs" />
+    <Compile Include="Helpers\CoreUtil.cs" />
+    <Compile Include="Helpers\EmotionServiceHelper.cs" />
+    <Compile Include="Helpers\ErrorTrackingHelper.cs" />
+    <Compile Include="Helpers\FaceListManager.cs" />
+    <Compile Include="Helpers\FaceServiceHelper.cs" />
+    <Compile Include="Helpers\ImageAnalyzer.cs" />
+    <Compile Include="Helpers\PhotoEvent.cs" />
+    <Compile Include="Helpers\TextAnalyticsHelper.cs" />
     <Compile Include="KioskExperiences.cs" />
     <Compile Include="Controls\CameraControl.xaml.cs">
       <DependentUpon>CameraControl.xaml</DependentUpon>
@@ -152,6 +163,11 @@
     <Compile Include="Controls\PageHeader.xaml.cs">
       <DependentUpon>PageHeader.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\20161117184649_InitialMigration.cs" />
+    <Compile Include="Migrations\20161117184649_InitialMigration.designer.cs">
+      <DependentUpon>20161117184649_InitialMigration.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\KioskDBContextModelSnapshot.cs" />
     <Compile Include="NavMenuItem.cs" />
     <Compile Include="SettingsHelper.cs" />
     <Compile Include="User.cs" />
@@ -348,12 +364,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="ServiceHelpers\ServiceHelpers.csproj">
-      <Project>{5d9320af-a9e4-48e3-89bc-9f7f0954b298}</Project>
-      <Name>ServiceHelpers</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup />
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">

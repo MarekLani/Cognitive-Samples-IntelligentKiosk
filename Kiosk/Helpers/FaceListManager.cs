@@ -31,6 +31,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using IntelligentKioskSample;
 using Microsoft.ProjectOxford.Face;
 using Microsoft.ProjectOxford.Face.Contract;
 using System;
@@ -93,7 +94,7 @@ namespace ServiceHelpers
             }
         }
 
-        public static async Task<SimilarPersistedFace> FindSimilarPersistedFaceAsync(Stream imageStream, Guid faceId, FaceRectangle faceRectangle, string faceIdToDelete = "")
+        public static async Task<Tuple<SimilarPersistedFace, string>> FindSimilarPersistedFaceAsync(Stream imageStream, Guid faceId, FaceRectangle faceRectangle)
         {
             if (faceLists == null)
             {
@@ -103,9 +104,12 @@ namespace ServiceHelpers
             Tuple<SimilarPersistedFace, string> bestMatch = null;
 
             var faceListId = faceLists.FirstOrDefault().Key;
+            //await FaceServiceHelper.DeleteFaceListAsync(faceListId);
             try
             {
-                SimilarPersistedFace similarFace = (await FaceServiceHelper.FindSimilarAsync(faceId, faceListId))?.FirstOrDefault();
+                SimilarPersistedFace similarFace = null;
+                if(faceListId != null)
+                    similarFace = (await FaceServiceHelper.FindSimilarAsync(faceId, faceListId))?.FirstOrDefault();
                 if (similarFace != null)
                 {
                     if (bestMatch != null)
@@ -143,9 +147,20 @@ namespace ServiceHelpers
                     var faceList = faceLists.First();
                     if (faceList.Value.IsFull)
                     {
-                        await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceList.Key, new Guid(faceIdToDelete));
-                        addResult = await FaceServiceHelper.AddFaceToFaceListAsync(faceList.Key, imageStream, faceRectangle);
+                        DBSimilarFace faceToDelete = null;
+                        using (var db = new KioskDBContext())
+                        {
+                            faceToDelete = db.SimilarFaces.OrderByDescending(sf => sf.PersonId).First();
+                            db.SimilarFaces.Remove(faceToDelete);
+                            await db.SaveChangesAsync();
+                        }
+
+                        //TODO test whether this is OK, if faceToDelete is being preserved
+                        await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceList.Key, new Guid(faceToDelete.FaceId));
                     }
+
+                    addResult = await FaceServiceHelper.AddFaceToFaceListAsync(faceList.Key, imageStream, faceRectangle);
+
                     if (addResult != null)
                     {
                         bestMatch = new Tuple<SimilarPersistedFace, string>(new SimilarPersistedFace { Confidence = 1, PersistedFaceId = addResult.PersistedFaceId }, null);
@@ -159,7 +174,7 @@ namespace ServiceHelpers
                 ErrorTrackingHelper.TrackException(e, "Face API FindSimilarAsync error");
             }
 
-            return bestMatch?.Item1;
+            return bestMatch;
         }
     }
 }

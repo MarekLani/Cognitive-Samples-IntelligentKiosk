@@ -109,7 +109,7 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal">
-                            <Slider x:Name="Confidence" Minimum="0.5" Maximum="1" Value="{Binding PhotoFrequency, Mode=TwoWay}" SmallChange="0.1" LargeChange="0.1" Header="Needed confidence when identifying person:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="0.1"/>
+                            <Slider x:Name="Confidence" Minimum="0.5" Maximum="1" Value="{Binding Confidence, Mode=TwoWay}" SmallChange="0.1" LargeChange="0.1" Header="Needed confidence when identifying person:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="0.1"/>
                             <TextBlock Text="{Binding ElementName=Confidence, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
                         </StackPanel>
                     </StackPanel>
