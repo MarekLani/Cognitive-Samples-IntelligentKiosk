@@ -78,20 +78,7 @@ namespace IntelligentKioskSample.Views
 
         private ObservableCollection<IdentifiedFaces> identifiedPersonsIdCollection = new ObservableCollection<IdentifiedFaces>();
 
-        private class IdentifiedFaces
-        {
-            public string Id { get; set; }
-            public DateTime CreatedAt { get; set; }
-
-            public IdentifiedFaces()
-            {
-                CreatedAt = DateTime.Now;
-                NumberOfIdentifications = 1;
-            }
-
-            public int NumberOfIdentifications { get; set; }
-            public Visibility Deleted { get; set; } = Visibility.Collapsed;
-        }
+        
 
         public RealTimeDemo()
         {
@@ -175,55 +162,17 @@ namespace IntelligentKioskSample.Views
 
             DateTime start = DateTime.Now;
 
-            // Compute Emotion, Age and Gender
-
+            // Compute Emotion, Age, Gender and Idetify person
             try
             {
                 await e.DetectFacesAsync(detectFaceAttributes: true);
 
-                //It is cheaper to detect emotions with rectangles posted
+                //It is cheaper to detect emotions with rectangles posted, so we do it this way
                 await e.DetectEmotionWithRectanglesAsync();
 
-                //We need to summarize information into one object
+                //Creating list of faces with summarized info for event hub message
+                List<FaceSendInfo> facesToSend = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, identifiedPersonsIdCollection);
 
-
-                List<FaceSendInfo> facesToSend = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, SettingsHelper.Instance.Confidence);
-
-                foreach (var f in facesToSend)
-                {
-                    if (!identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).Any())
-                    {
-                        identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = f.can1id });
-                    }
-                    //We are going to look only on first candidate, if there are more candidates for one face and 1st candidate is strongedt, it is probable, that we added one face by mistake
-                    else if (identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).Any())
-                    {
-                        identifiedPersonsIdCollection.Where(ip => ip.Id == f.can1id).FirstOrDefault().NumberOfIdentifications++;
-                    }
-                }
-                var tbd = new List<IdentifiedFaces>();
-                foreach (var ip in identifiedPersonsIdCollection)
-                {
-                    if (ip.NumberOfIdentifications <= 1 && (ip.CreatedAt.AddSeconds(SettingsHelper.Instance.DeleteWindow) < DateTime.Now))
-                    {
-                        var g = (await FaceServiceHelper.GetPersonGroupsAsync()).Where(gr => gr.Name == groupName).FirstOrDefault();
-                        Person pers = await FaceServiceHelper.GetPersonAsync(g.PersonGroupId, new Guid(ip.Id));
-                        
-                        //if we saved only one face then delete
-                        if (pers.PersistedFaceIds.Length <= 1)
-                        {
-                            await FaceServiceHelper.DeletePersonAsync(g.PersonGroupId, pers.PersonId);
-                            await FaceServiceHelper.TrainPersonGroupAsync(g.PersonGroupId);
-                            tbd.Add(ip);
-                        }
-                    }
-                }
-               
-                   
-                foreach (var iptodelete in tbd)
-                {
-                    identifiedPersonsIdCollection.Remove(iptodelete);
-                }
                 //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
                 //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
 

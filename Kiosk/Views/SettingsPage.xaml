@@ -57,6 +57,11 @@
                             <TextBox Text="{Binding GroupName, Mode=TwoWay}" />
                         </StackPanel>
 
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Please when changing name of Face Api Group Name also delete Similar Faces by clicking button bellow"  Margin="0,5,0,0"  />
+                            <Button Content="Delete Similar Faces" Click="DeleteSimilarFacesButton_Click"/>
+                        </StackPanel>
+                        
 
                         <StackPanel Orientation="Vertical">
                             <TextBlock Text="Hub namespace " Style="{StaticResource BodyTextBlockStyle}" Margin="0,5,0,0"  />
@@ -104,10 +109,26 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal">
-                            <Slider x:Name="DeleteWindow" Minimum="1" Maximum="200" Value="{Binding DeleteWindow, Mode=TwoWay}" SmallChange="1" LargeChange="10" Header="Delete Window (specifies how much time we leave before we delete face with only one identification (in seconds)):" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <Slider x:Name="DeleteWindow" Minimum="1" Maximum="200" Value="{Binding DeleteWindow, Mode=TwoWay}" SmallChange="1" LargeChange="3" Header="Delete Window (specifies how much time we leave before we delete face with only one identification (in seconds)):" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
                             <TextBlock Text="{Binding ElementName=DeleteWindow, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
                         </StackPanel>
 
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="NeededFaceIdentNum" Minimum="1" Maximum="10" Value="{Binding NeededFaceIdentNum, Mode=TwoWay}" SmallChange="1" LargeChange="10" Header="How many faces do we need the person to have, so we do not delete and mark as inaccurately learned (should be smaller than number of photo adds in one period)" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=NeededFaceIdentNum, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="NumberOfPhotoAddsInPeriod" Minimum="1" Maximum="30" Value="{Binding NumberOfPhotoAddsInPeriod, Mode=TwoWay}" SmallChange="1" LargeChange="10" Header="Number of photos we add in one period (understand in one session in front of cammera)" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=NumberOfPhotoAddsInPeriod, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="PhotoAddPeriodSize" Minimum="1" Maximum="24" Value="{Binding PhotoAddPeriodSize, Mode=TwoWay}" SmallChange="1" LargeChange="4" Header="Period (in hours) which we take as one session in front of cammera" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="1"/>
+                            <TextBlock Text="{Binding ElementName=PhotoAddPeriodSize, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+
+                       
                         <StackPanel Orientation="Horizontal">
                             <Slider x:Name="Confidence" Minimum="0.5" Maximum="1" Value="{Binding Confidence, Mode=TwoWay}" SmallChange="0.1" LargeChange="0.1" Header="Needed confidence when identifying person:" HorizontalAlignment="Left" Margin="0,0,0,0" StepFrequency="0.1"/>
                             <TextBlock Text="{Binding ElementName=Confidence, Path=Value}" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" Margin="12,0,0,0"/>

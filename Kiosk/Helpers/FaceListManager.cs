@@ -51,6 +51,9 @@ namespace ServiceHelpers
 
     public class FaceListManager
     {
+
+        private static string newFaceListId;
+
         private static Dictionary<string, FaceListInfo> faceLists;
 
         public static string FaceListsUserDataFilter { get; set; }
@@ -63,10 +66,18 @@ namespace ServiceHelpers
 
             try
             {
-                IEnumerable<FaceListMetadata> metadata = await FaceServiceHelper.GetFaceListsAsync(FaceListsUserDataFilter);
+                //IEnumerable<FaceListMetadata> metadata = await FaceServiceHelper.GetFaceListsAsync(FaceListsUserDataFilter);
+                IEnumerable<FaceListMetadata> metadata = await FaceServiceHelper.GetFaceListsAsync();
                 foreach (var item in metadata)
                 {
                     await FaceServiceHelper.DeleteFaceListAsync(item.FaceListId);
+                }
+
+                //We want to delete also local persisted DB
+                using (var db = new KioskDBContext())
+                {
+                    db.SimilarFaces.RemoveRange(db.SimilarFaces);
+                    db.SaveChanges();
                 }
             }
             catch (Exception e)
@@ -87,11 +98,23 @@ namespace ServiceHelpers
                 {
                     faceLists.Add(item.FaceListId, new FaceListInfo { FaceListId = item.FaceListId, LastMatchTimestamp = DateTime.Now });
                 }
+
             }
             catch (Exception e)
             {
                 ErrorTrackingHelper.TrackException(e, "Face API GetFaceListsAsync error");
             }
+        }
+
+        public static async Task DeleteFaceFromFaceList(string faceIdToDelete)
+        {
+            if (faceLists == null)
+            {
+                await Initialize();
+            }
+
+            var faceListId = faceLists.FirstOrDefault().Key;
+            await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceListId, new Guid(faceIdToDelete));
         }
 
         public static async Task<Tuple<SimilarPersistedFace, string>> FindSimilarPersistedFaceAsync(Stream imageStream, Guid faceId, FaceRectangle faceRectangle)
@@ -104,6 +127,8 @@ namespace ServiceHelpers
             Tuple<SimilarPersistedFace, string> bestMatch = null;
 
             var faceListId = faceLists.FirstOrDefault().Key;
+
+            //Delete for testing purposes
             //await FaceServiceHelper.DeleteFaceListAsync(faceListId);
             try
             {
@@ -134,7 +159,7 @@ namespace ServiceHelpers
                     if (!faceLists.Any())
                     {
                         // We don't have any FaceLists yet. Create one
-                        string newFaceListId = Guid.NewGuid().ToString();
+                        newFaceListId = Guid.NewGuid().ToString();
                         // await FaceServiceHelper.CreateFaceListAsync(newFaceListId, "ManagedFaceList", FaceListsUserDataFilter);
                         //We are not using filters
                         await FaceServiceHelper.CreateFaceListAsync(newFaceListId, "ManagedFaceList");
@@ -155,7 +180,6 @@ namespace ServiceHelpers
                             await db.SaveChangesAsync();
                         }
 
-                        //TODO test whether this is OK, if faceToDelete is being preserved
                         await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceList.Key, new Guid(faceToDelete.FaceId));
                     }
 

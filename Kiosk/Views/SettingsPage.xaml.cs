@@ -31,6 +31,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using ServiceHelpers;
 using System;
 using System.Threading.Tasks;
 using Windows.Security.Authentication.Web;
@@ -123,6 +124,12 @@ namespace IntelligentKioskSample.Views
                 dialog.ShowAsync();
             }
                 
+        }
+
+
+        private async void DeleteSimilarFacesButton_Click(object sender, RoutedEventArgs e)
+        {
+            await FaceListManager.ResetFaceLists();
         }
     }
 }

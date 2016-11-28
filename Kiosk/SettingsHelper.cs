@@ -332,5 +332,50 @@ namespace IntelligentKioskSample
                 this.OnSettingChanged("HubKeyName", value);
             }
         }
+
+        /// <summary>
+        /// How many faces do we need the person to have, so we do not delete and mark as inaccurately learned
+        /// </summary>
+        private int neededFaceIdentNum = 3;
+        public int NeededFaceIdentNum
+        {
+            get { return neededFaceIdentNum; }
+            set
+            {
+                this.neededFaceIdentNum = value;
+                this.OnSettingChanged("NeededFaceIdentNum", value);
+            }
+        }
+
+        /// <summary>
+        /// Number of photos we add in one period (understand in one session in front of cammera)
+        /// </summary>
+        private int numberOfPhotoAddsInPeriod = 5;
+        public int NumberOfPhotoAddsInPeriod
+        {
+            get { return numberOfPhotoAddsInPeriod; }
+            set
+            {
+                this.numberOfPhotoAddsInPeriod = value;
+                this.OnSettingChanged("NumberOfPhotoAddsInPeriod", value);
+            }
+        }
+
+        /// <summary>
+        /// Period (in hours) which we take as one session in front of cammera (one visit of space where the kiosk is placed), it is not probable, that person will change his or her face landmarks radically
+        /// </summary>
+        private int photoAddPeriodSize = 1;
+        public int PhotoAddPeriodSize
+        {
+            get { return photoAddPeriodSize; }
+            set
+            {
+                this.photoAddPeriodSize = value;
+                this.OnSettingChanged("PhotoAddPeriodSize", value);
+            }
+        }
+
+
+
     }
 }

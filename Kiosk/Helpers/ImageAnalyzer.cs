@@ -39,9 +39,11 @@ using Microsoft.ProjectOxford.Face.Contract;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.UI.Xaml;
 
 namespace ServiceHelpers
 {
@@ -182,6 +184,10 @@ namespace ServiceHelpers
             }
         }
 
+        /// <summary>
+        /// Calling emotion detect for every recognized face
+        /// </summary>
+        /// <returns></returns>
         public async Task DetectEmotionWithRectanglesAsync()
         {
             try
@@ -297,14 +303,20 @@ namespace ServiceHelpers
             this.OnFaceRecognitionCompleted();
         }
 
-        public async Task<List<FaceSendInfo>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, double confidence)
+        public async Task<List<FaceSendInfo>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, ObservableCollection<IdentifiedFaces> identifiedPersonsIdCollection)
         {
+
             var time = DateTime.Now;
-            //We also add emotions
+            
             var facesInfo = new List<FaceSendInfo>();
+
+            //Loop thru all detected faces from previous steps and fill the facesInfo array
+            //For ease of processing in Azure Stream Analytics we create single level object
             foreach (var f in this.DetectedFaces)
             {
                 var fsi = new FaceSendInfo();
+
+                //Add emotions
                 var e = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
 
                 fsi.faceId = f.FaceId.ToString();
@@ -339,15 +351,16 @@ namespace ServiceHelpers
                 fsi.surprise = e.Scores.Surprise;
 
                 fsi.timeStamp = time;
+                //We sen also info how many faces in total were recognized on the picture with current face
                 fsi.facesNo = this.DetectedFaces.Count();
 
                 facesInfo.Add(fsi);
             }
             
-            //Move to initialization
+            //Now we proceed to face recognition/identification
+            //First we create group if it does not exist
             try
             {
-
                 var g = await FaceServiceHelper.CreatePersonGroupIfNoGroupExists(groupName);
                 groupId = g.PersonGroupId;
             }
@@ -363,72 +376,76 @@ namespace ServiceHelpers
                 }
             }
 
-            // Compute Face Identification and Unique Face Ids
-            //We need to map detected faceID with actual personID (Identified face)
+           
+            //We need to find candidate for every face
             try
             {
                 IdentifyResult[] groupResults = await this.IdentifyFacesAsync(groupId);
+
+                //We loop thri all faces again in order to find candidate
                 foreach (var f in this.DetectedFaces)
                 {
+                    bool needToRetrain = true;
                     var fi = facesInfo.Where(fin => fin.faceId == f.FaceId.ToString()).FirstOrDefault();
                     var newPersonID = Guid.NewGuid();
+
                     if (groupResults != null && groupResults.Where(gr => gr.FaceId == f.FaceId).Any() && groupResults.Where(gr => gr.FaceId == f.FaceId).FirstOrDefault().Candidates.Any())
                     {
                         var candidates = groupResults.Where(gr => gr.FaceId == f.FaceId).FirstOrDefault().Candidates.OrderByDescending(ca => ca.Confidence);
  
-                        int i = 0;
                         Person p = new Person();
-                        foreach (var can in candidates)
-                        {
+                        var can = candidates.FirstOrDefault();
 
-                            switch (i)
+                        //If we have sufficient confidence, we add Face for person
+                        if (can.Confidence >= SettingsHelper.Instance.Confidence)
+                        {
+                            fi.canid = can.PersonId.ToString();
+                            fi.canconf = can.Confidence;
+
+                            //In order to get also name we need to obtain Person
+                            p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
+                            fi.canname = p.Name;
+
+                            var identifiedPersonFromList = identifiedPersonsIdCollection.Where(ip => ip.Id == can.PersonId.ToString()).FirstOrDefault();
+
+                            //Check whether we did not added too much photos lately, it is not neccesary to add photo for face every time
+                            if (identifiedPersonFromList == null)
                             {
-                                case 0:
-                                    fi.can1id = can.PersonId.ToString();
-                                    fi.can1conf = can.Confidence;
-                                    p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
-                                    fi.can1name = p.Name;
-                                    if (can.Confidence >= confidence)
-                                    {
-                                        await AddFaceToPerson(f, p, can.PersonId);
-                                    }
-                                    else
-                                    {
-                                        await CreatePrsonIfNoSimilarFaceExistsAsync(facesInfo, newPersonID, f);
-                                    }
-                                    break;
-                                case 1:
-                                    fi.can2id = can.PersonId.ToString();
-                                    fi.can2conf = can.Confidence;
-                                    p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
-                                    fi.can2name = p.Name;
-                                    break;
-                                case 2:
-                                    fi.can3id = can.PersonId.ToString();
-                                    fi.can3conf = can.Confidence;
-                                    p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
-                                    fi.can3name = p.Name;
-                                    break;
-                                case 3:
-                                    fi.can4id = can.PersonId.ToString();
-                                    fi.can4conf = can.Confidence;
-                                    p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
-                                    fi.can4name = p.Name;
-                                    break;
+                                await AddFaceToPerson(f, p, can.PersonId);
                             }
-                            i++;
+                            else if(identifiedPersonFromList.NumOfAddedPhotosInLastPeriod < SettingsHelper.Instance.NumberOfPhotoAddsInPeriod)
+                            {
+                                await AddFaceToPerson(f, p, can.PersonId);
+                                identifiedPersonFromList.NumOfAddedPhotosInLastPeriod++;
+                            }
+                            else if ((DateTime.Now - identifiedPersonFromList.FirstPhotoAddedInLastPeriod).Hours > SettingsHelper.Instance.PhotoAddPeriodSize)
+                            {
+                                identifiedPersonFromList.NumOfAddedPhotosInLastPeriod = 1;
+                                identifiedPersonFromList.FirstPhotoAddedInLastPeriod = DateTime.Now;
+                                await AddFaceToPerson(f, p, can.PersonId);
+                            }
+                            else
+                            {
+                                needToRetrain = false;
+                            }
+                        }
+                        else
+                        {
+                            //if not sufficient confidence we also need to check whether there is similar face/ if not create new person
+                            await CreatePrsonIfNoSimilarFaceExistsAsync(facesInfo, newPersonID, f);
                         }
                     }
-
                     else
                     {
-                        //if no candidate we also need to check whether there is similar face if not create new person
+                        //if no candidate we also need to check whether there is similar fac,e if not create new person
                         await CreatePrsonIfNoSimilarFaceExistsAsync(facesInfo, newPersonID, f);
                         
                     }
                     try
                     {
-                        await FaceServiceHelper.TrainPersonGroupAsync(groupId);
+                        //We need to train after operation on top of group (addition of photo, person etc.)
+                        if(needToRetrain)
+                            await FaceServiceHelper.TrainPersonGroupAsync(groupId);
                     }
                     catch (Exception e)
                     {
@@ -439,6 +456,54 @@ namespace ServiceHelpers
                         {
                             await ErrorTrackingHelper.GenericApiCallExceptionHandler(e, "Problem training group");
                         }
+                    }
+
+
+                    //Handle the identified persons collection to which we locally save every identified person 
+                    if (!identifiedPersonsIdCollection.Where(ip => ip.Id == fi.canid).Any())
+                    {
+                        identifiedPersonsIdCollection.Add(new IdentifiedFaces() { Id = fi.canid });
+                    }
+
+                    //Increase counter of identifications
+                    else if (identifiedPersonsIdCollection.Where(ip => ip.Id == fi.canid).Any())
+                    {
+                        identifiedPersonsIdCollection.Where(ip => ip.Id == fi.canid).FirstOrDefault().NumberOfIdentifications++;
+                    }
+
+                    //Find faces which were wrongly learned (small number of identifications)
+                    var tbd = new List<IdentifiedFaces>();
+                    foreach (var ip in identifiedPersonsIdCollection)
+                    {
+                        if (ip.NumberOfIdentifications <= SettingsHelper.Instance.NeededFaceIdentNum && (ip.CreatedAt.AddSeconds(SettingsHelper.Instance.DeleteWindow) < DateTime.Now))
+                        {
+                            var g = (await FaceServiceHelper.GetPersonGroupsAsync()).Where(gr => gr.Name == groupName).FirstOrDefault();
+                            Person pers = await FaceServiceHelper.GetPersonAsync(g.PersonGroupId, new Guid(ip.Id));
+
+                            //if we saved insufficient number of faces than delete
+                            if (pers.PersistedFaceIds.Length <= SettingsHelper.Instance.NeededFaceIdentNum)
+                            {
+                                await FaceServiceHelper.DeletePersonAsync(g.PersonGroupId, pers.PersonId);
+
+                                string similarFaceId = "";
+                                using (var db = new KioskDBContext())
+                                {
+                                    var sfToDelete = db.SimilarFaces.Where(sf => sf.PersonId == pers.PersonId.ToString()).FirstOrDefault();
+                                    similarFaceId = sfToDelete.FaceId.ToString();
+                                    db.SimilarFaces.Remove(sfToDelete);
+                                }
+
+                                await FaceListManager.DeleteFaceFromFaceList(similarFaceId);
+                                await FaceServiceHelper.TrainPersonGroupAsync(g.PersonGroupId);
+                                tbd.Add(ip);
+                            }
+                        }
+                    }
+
+
+                    foreach (var iptodelete in tbd)
+                    {
+                        identifiedPersonsIdCollection.Remove(iptodelete);
                     }
                 }
             }
@@ -457,37 +522,66 @@ namespace ServiceHelpers
 
         private async Task CreatePrsonIfNoSimilarFaceExistsAsync(List<FaceSendInfo> facesInfo, Guid newPersonID, Face f)
         {
+            //TODO return person result so we can change candidate if we are not going with the one selected
+
+            //We try to find person also thru similar face api
+            SimilarFaceMatch result = await GetSimilarFace(f);
+
             using (var db = new KioskDBContext())
             {
-                //create new Guy if confidence not sufficient
-                SimilarFaceMatch result = await GetSimilarFace(f);
-
                 //If we create new similar face, we create also new person
-                if (result.isNew )
+                if (result.isNew)
                 {
+                    //We create db where we map SimilarPersonID to PersonID, because those are different in cognitive services
                     var perResult = await CreatePerson(facesInfo, newPersonID, f);
                     db.SimilarFaces.Add(new DBSimilarFace() { CreatedAt = DateTime.Now, FaceId = result.SimilarPersistedFace.PersistedFaceId.ToString(), PersonId = perResult.ToString() });
                     await db.SaveChangesAsync();
                 }
+
                 else
                 {
                     try
                     {
                         var personId = db.SimilarFaces.Where(sf => sf.FaceId == result.SimilarPersistedFace.PersistedFaceId.ToString()).FirstOrDefault().PersonId;
-                  
-                    var person = await FaceServiceHelper.GetPersonAsync(groupId, new Guid(personId));
-                    await AddFaceToPerson(f, person, new Guid(personId));
+
+                        var person = await FaceServiceHelper.GetPersonAsync(groupId, new Guid(personId));
+
+                        //Fill new info
+                        var fi = facesInfo.Where(fin => fin.faceId == f.FaceId.ToString()).FirstOrDefault();
+                        fi.canid = personId;
+                        fi.canname = person.Name;
+                        fi.canconf = result.SimilarPersistedFace.Confidence;
+
+                        //We did not identified person thru person group and we needed to use silimar face api, so we add picture
+                        await AddFaceToPerson(f, person, new Guid(personId));
                     }
                     catch (Exception)
-                    { }
-                }
+                    {
+                        //Person was not found due to old entry in local DB (Exception thrown by FaceApi GetPersonAsync)
 
+                        //We clean the old entry from DB and create new Person
+                        var oldDbEntry = db.SimilarFaces.Where(sf => sf.FaceId == result.SimilarPersistedFace.PersistedFaceId.ToString()).FirstOrDefault();
+                        var perResult = await CreatePerson(facesInfo, newPersonID, f);
+                        if (oldDbEntry != null)
+                        {
+                            db.SimilarFaces.Update(oldDbEntry);
+                            oldDbEntry.FaceId = result.SimilarPersistedFace.PersistedFaceId.ToString();
+                            oldDbEntry.PersonId = perResult.ToString();
+                        }
+                        else { 
+                            db.SimilarFaces.Add(new DBSimilarFace() { CreatedAt = DateTime.Now, FaceId = result.SimilarPersistedFace.PersistedFaceId.ToString(), PersonId = perResult.ToString() });
+                        }
+
+                        await db.SaveChangesAsync();
+                        
+                    }
+                }
             }
         }
 
         private async Task AddFaceToPerson( Face f, Person p, Guid personId)
         {
-            
+            //Maximum faces that we are able to persist
             if (p.PersistedFaceIds.Length == 248)
             {
                 Guid persistedFaceId = p.PersistedFaceIds.OrderBy(x => Guid.NewGuid()).FirstOrDefault();
@@ -541,14 +635,14 @@ namespace ServiceHelpers
             AddPersistedFaceResult result = null;
             try
             {
-                //No candidate we are going to create new person
+                //No candidate we are going to create new person and set candidate to be same as newly created person with confidence of 100%
                 var name = f.FaceAttributes.Gender + "-" + f.FaceAttributes.Age + "-" + newPersonID.ToString();
+
                 newPersonID = (await FaceServiceHelper.CreatePersonWithResultAsync(groupId, name)).PersonId;
                 var fi = facesInfo.Where(fin => fin.faceId == f.FaceId.ToString()).FirstOrDefault();
-                fi.can1id = newPersonID.ToString();
-                fi.can1name = name;
-                fi.can1conf = 1;
-
+                fi.canid = newPersonID.ToString();
+                fi.canname = name;
+                fi.canconf = 1;
                 
                 await FaceServiceHelper.AddPersonFaceAsync(groupId, newPersonID, await this.GetImageStreamCallback(), "", f.FaceRectangle);
 
@@ -832,21 +926,9 @@ namespace ServiceHelpers
 
         public int facesNo { get; set; }
 
-        public string can1id { get; set; } = "";
-        public string can1name { get; set; } = "";
-        public double can1conf { get; set; } = 0;
-
-        public string can2id { get; set; } = "";
-        public string can2name { get; set; } = "";
-        public double can2conf { get; set; } = 0;
-
-        public string can3id { get; set; } = "";
-        public string can3name { get; set; } = "";
-        public double can3conf { get; set; } = 0;
-
-        public string can4id { get; set; } = "";
-        public string can4name { get; set; } = "";
-        public double can4conf { get; set; } = 0;
+        public string canid { get; set; } = "";
+        public string canname { get; set; } = "";
+        public double canconf { get; set; } = 0;
 
         [JsonIgnore]
         public List<CandidateWithName> candidates { get; set; }
@@ -858,6 +940,27 @@ namespace ServiceHelpers
         public string personId { get; set; }
         public string name { get; set; }
         public double confidence { get; set; }
+    }
+
+    public class IdentifiedFaces
+    {
+        public string Id { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        public IdentifiedFaces()
+        {
+            CreatedAt = DateTime.Now;
+            NumberOfIdentifications = 1;
+            NumOfAddedPhotosInLastPeriod = 1;
+            FirstPhotoAddedInLastPeriod = DateTime.MinValue;
+        }
+
+        public int NumberOfIdentifications { get; set; }
+        public Visibility Deleted { get; set; } = Visibility.Collapsed;
+
+        public int NumOfAddedPhotosInLastPeriod { get; set; }
+
+        public DateTime FirstPhotoAddedInLastPeriod { get; set; }
     }
 
 }
