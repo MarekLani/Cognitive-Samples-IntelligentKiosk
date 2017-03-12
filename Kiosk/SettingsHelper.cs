@@ -177,6 +177,16 @@ namespace IntelligentKioskSample
                     this.ShowDebugInfo = booleanValue;
                 }
             }
+
+            value = ApplicationData.Current.RoamingSettings.Values["ComplexIdentification"];
+            if (value != null)
+            {
+                bool booleanValue;
+                if (bool.TryParse(value.ToString(), out booleanValue))
+                {
+                    this.ComplexIdentification = booleanValue;
+                }
+            }
         }
 
 
@@ -372,6 +382,21 @@ namespace IntelligentKioskSample
             {
                 this.photoAddPeriodSize = value;
                 this.OnSettingChanged("PhotoAddPeriodSize", value);
+            }
+        }
+
+
+        /// <summary>
+        ///Do we use complex identification or not
+        /// </summary>
+        private bool complexIdentification = true;
+        public bool ComplexIdentification
+        {
+            get { return complexIdentification; }
+            set
+            {
+                this.complexIdentification = value;
+                this.OnSettingChanged("ComplexIdentification", value);
             }
         }
 

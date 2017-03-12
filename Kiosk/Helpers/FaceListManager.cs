@@ -36,6 +36,7 @@ using Microsoft.ProjectOxford.Face;
 using Microsoft.ProjectOxford.Face.Contract;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -117,6 +118,14 @@ namespace ServiceHelpers
             await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceListId, new Guid(faceIdToDelete));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="imageStream"></param>
+        /// <param name="faceId"></param>
+        /// <param name="faceRectangle"></param>
+        /// <param name="complexScenario"> - Whether we are identifying face hard way - means whether we need to use db or not</param>
+        /// <returns></returns>
         public static async Task<Tuple<SimilarPersistedFace, string>> FindSimilarPersistedFaceAsync(Stream imageStream, Guid faceId, FaceRectangle faceRectangle)
         {
             if (faceLists == null)
@@ -133,8 +142,18 @@ namespace ServiceHelpers
             try
             {
                 SimilarPersistedFace similarFace = null;
-                if(faceListId != null)
-                    similarFace = (await FaceServiceHelper.FindSimilarAsync(faceId, faceListId))?.FirstOrDefault();
+                if (faceListId != null)
+                    try
+                    {
+                        similarFace = (await FaceServiceHelper.FindSimilarAsync(faceId, faceListId))?.FirstOrDefault();
+                    }
+                    catch(Exception e)
+                    {
+                        if( (e as FaceAPIException).ErrorCode == "FaceListNotReady")
+                        {
+                            // do nothing, list is empty but we continue
+                        }
+                    }
                 if (similarFace != null)
                 {
                     if (bestMatch != null)
@@ -172,15 +191,23 @@ namespace ServiceHelpers
                     var faceList = faceLists.First();
                     if (faceList.Value.IsFull)
                     {
-                        DBSimilarFace faceToDelete = null;
-                        using (var db = new KioskDBContext())
+                        //It is here only for complex scenario where we use groups and lists mappings
+                        try
                         {
-                            faceToDelete = db.SimilarFaces.OrderByDescending(sf => sf.PersonId).First();
-                            db.SimilarFaces.Remove(faceToDelete);
-                            await db.SaveChangesAsync();
-                        }
-
+                            DBSimilarFace faceToDelete = null;
+                            using (var db = new KioskDBContext())
+                            {
+                                faceToDelete = db.SimilarFaces.OrderByDescending(sf => sf.PersonId).First();
+                                db.SimilarFaces.Remove(faceToDelete);
+                                await db.SaveChangesAsync();
+                            }
+                     
                         await FaceServiceHelper.DeleteFaceFromFaceListAsync(faceList.Key, new Guid(faceToDelete.FaceId));
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.WriteLine("No face to be deleted" + e.Message);
+                        }
                     }
 
                     addResult = await FaceServiceHelper.AddFaceToFaceListAsync(faceList.Key, imageStream, faceRectangle);

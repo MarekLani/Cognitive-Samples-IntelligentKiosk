@@ -49,7 +49,7 @@ namespace ServiceHelpers
 {
     public class ImageAnalyzer
     {
-        private static FaceAttributeType[] DefaultFaceAttributeTypes = new FaceAttributeType[] { FaceAttributeType.Age, FaceAttributeType.FacialHair, FaceAttributeType.Glasses, FaceAttributeType.Smile, FaceAttributeType.Gender, FaceAttributeType.HeadPose };
+        public static FaceAttributeType[] DefaultFaceAttributeTypes = new FaceAttributeType[] { FaceAttributeType.Age, FaceAttributeType.FacialHair, FaceAttributeType.Glasses, FaceAttributeType.Smile, FaceAttributeType.Gender, FaceAttributeType.HeadPose };
         private string groupId = null;
 
         public event EventHandler FaceDetectionCompleted;
@@ -303,11 +303,45 @@ namespace ServiceHelpers
             this.OnFaceRecognitionCompleted();
         }
 
+        public async Task<List<FaceSendInfo>> FindSimilarPersonWithEmotion()
+        {
+            var facesInfo = new List<FaceSendInfo>();
+            List<SimilarFaceMatch> result = new List<SimilarFaceMatch>();
+            //Loop thru all detected faces from previous steps and fill the facesInfo array
+            //For ease of processing in Azure Stream Analytics we create single level object
+            foreach (var f in this.DetectedFaces)
+            {
+                var fsi = new FaceSendInfo();
+
+                //Add emotions
+                var e = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
+                FeedFaceInfo(f, fsi, e);
+                //We sen also info how many faces in total were recognized on the picture with current face
+                fsi.facesNo = this.DetectedFaces.Count();
+
+               
+
+                Tuple<SimilarPersistedFace, string> similarPersistedFace = await FaceListManager.FindSimilarPersistedFaceAsync(await this.GetImageStreamCallback(), f.FaceId, f.FaceRectangle);
+                if (similarPersistedFace != null)
+                {
+                    result.Add(new SimilarFaceMatch { Face = f, SimilarPersistedFace = similarPersistedFace.Item1 });
+                    fsi.canid = similarPersistedFace.Item1.PersistedFaceId.ToString();
+                    fsi.canconf = similarPersistedFace.Item1.Confidence;
+
+                    //In order to get also name we need to obtain Person
+                    //p = await FaceServiceHelper.GetPersonAsync(groupId, can.PersonId);
+                    fsi.canname = similarPersistedFace.Item1.PersistedFaceId.ToString();
+                }
+
+                facesInfo.Add(fsi);
+            }
+            SimilarFaceMatches = result;
+            return facesInfo;
+        }
+
         public async Task<List<FaceSendInfo>> IdentifyOrAddPersonWithEmotionsAsync(string groupName, ObservableCollection<IdentifiedFaces> identifiedPersonsIdCollection)
         {
-
-            var time = DateTime.Now;
-            
+                    
             var facesInfo = new List<FaceSendInfo>();
 
             //Loop thru all detected faces from previous steps and fill the facesInfo array
@@ -318,45 +352,13 @@ namespace ServiceHelpers
 
                 //Add emotions
                 var e = CoreUtil.FindEmotionForFace(f, this.DetectedEmotion);
-
-                fsi.faceId = f.FaceId.ToString();
-                fsi.age = f.FaceAttributes.Age;
-
-                fsi.faceRecHeight = f.FaceRectangle.Height;
-                fsi.faceRecLeft = f.FaceRectangle.Left;
-                fsi.faceRecTop = f.FaceRectangle.Top;
-                fsi.faceRecWidth = f.FaceRectangle.Width;
-
-                fsi.gender = f.FaceAttributes.Gender;
-
-                fsi.smile = f.FaceAttributes.Smile;
-
-                fsi.beard = f.FaceAttributes.FacialHair.Beard;
-                fsi.moustache = f.FaceAttributes.FacialHair.Moustache;
-                fsi.sideburns = f.FaceAttributes.FacialHair.Sideburns;
-
-                fsi.glasses = f.FaceAttributes.Glasses.ToString();
-
-                fsi.headYaw = f.FaceAttributes.HeadPose.Yaw;
-                fsi.headRoll = f.FaceAttributes.HeadPose.Roll;
-                fsi.headPitch = f.FaceAttributes.HeadPose.Pitch;
-
-                fsi.anger = e.Scores.Anger;
-                fsi.contempt = e.Scores.Contempt;
-                fsi.disgust = e.Scores.Disgust;
-                fsi.fear = e.Scores.Fear;
-                fsi.happiness = e.Scores.Happiness;
-                fsi.neutral = e.Scores.Neutral;
-                fsi.sadness = e.Scores.Sadness;
-                fsi.surprise = e.Scores.Surprise;
-
-                fsi.timeStamp = time;
+                FeedFaceInfo( f, fsi, e);
                 //We sen also info how many faces in total were recognized on the picture with current face
                 fsi.facesNo = this.DetectedFaces.Count();
 
                 facesInfo.Add(fsi);
             }
-            
+
             //Now we proceed to face recognition/identification
             //First we create group if it does not exist
             try
@@ -520,6 +522,42 @@ namespace ServiceHelpers
             return facesInfo;
         }
 
+        private static void FeedFaceInfo(Face f, FaceSendInfo fsi, Emotion e)
+        {
+            fsi.faceId = f.FaceId.ToString();
+            fsi.age = f.FaceAttributes.Age;
+
+            fsi.faceRecHeight = f.FaceRectangle.Height;
+            fsi.faceRecLeft = f.FaceRectangle.Left;
+            fsi.faceRecTop = f.FaceRectangle.Top;
+            fsi.faceRecWidth = f.FaceRectangle.Width;
+
+            fsi.gender = f.FaceAttributes.Gender;
+
+            fsi.smile = f.FaceAttributes.Smile;
+
+            fsi.beard = f.FaceAttributes.FacialHair.Beard;
+            fsi.moustache = f.FaceAttributes.FacialHair.Moustache;
+            fsi.sideburns = f.FaceAttributes.FacialHair.Sideburns;
+
+            fsi.glasses = f.FaceAttributes.Glasses.ToString();
+
+            fsi.headYaw = f.FaceAttributes.HeadPose.Yaw;
+            fsi.headRoll = f.FaceAttributes.HeadPose.Roll;
+            fsi.headPitch = f.FaceAttributes.HeadPose.Pitch;
+
+            fsi.anger = e.Scores.Anger;
+            fsi.contempt = e.Scores.Contempt;
+            fsi.disgust = e.Scores.Disgust;
+            fsi.fear = e.Scores.Fear;
+            fsi.happiness = e.Scores.Happiness;
+            fsi.neutral = e.Scores.Neutral;
+            fsi.sadness = e.Scores.Sadness;
+            fsi.surprise = e.Scores.Surprise;
+
+            fsi.timeStamp = DateTime.Now;
+        }
+
         private async Task CreatePrsonIfNoSimilarFaceExistsAsync(List<FaceSendInfo> facesInfo, Guid newPersonID, Face f)
         {
             //TODO return person result so we can change candidate if we are not going with the one selected
@@ -540,9 +578,10 @@ namespace ServiceHelpers
 
                 else
                 {
+                    string personId = "";
                     try
                     {
-                        var personId = db.SimilarFaces.Where(sf => sf.FaceId == result.SimilarPersistedFace.PersistedFaceId.ToString()).FirstOrDefault().PersonId;
+                        personId = db.SimilarFaces.Where(sf => sf.FaceId == result.SimilarPersistedFace.PersistedFaceId.ToString()).FirstOrDefault().PersonId;
 
                         var person = await FaceServiceHelper.GetPersonAsync(groupId, new Guid(personId));
 
@@ -557,7 +596,15 @@ namespace ServiceHelpers
                     }
                     catch (Exception)
                     {
-                        //Person was not found due to old entry in local DB (Exception thrown by FaceApi GetPersonAsync)
+                        //Person was not found due to old entry in local DB (Exception thrown by FaceApi GetPersonAsync) or face was created only in list when not using complex identification
+
+                        //If person is only in list,  we need to create it also in person list
+                        if(personId == "")
+                        {
+                            var perResult2 = await CreatePerson(facesInfo, newPersonID, f);
+                            db.SimilarFaces.Add(new DBSimilarFace() { CreatedAt = DateTime.Now, FaceId = result.SimilarPersistedFace.PersistedFaceId.ToString(), PersonId = perResult2.ToString() });
+                            await db.SaveChangesAsync();
+                        }
 
                         //We clean the old entry from DB and create new Person
                         var oldDbEntry = db.SimilarFaces.Where(sf => sf.FaceId == result.SimilarPersistedFace.PersistedFaceId.ToString()).FirstOrDefault();

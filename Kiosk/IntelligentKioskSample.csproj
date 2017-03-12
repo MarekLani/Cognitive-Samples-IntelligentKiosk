@@ -10,8 +10,8 @@
     <AssemblyName>IntelligentKioskSample</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion>10.0.10240.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.10240.0</TargetPlatformMinVersion>
+    <TargetPlatformVersion>10.0.14393.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.14393.0</TargetPlatformMinVersion>
     <MinimumVisualStudioVersion>14</MinimumVisualStudioVersion>
     <EnableDotNetNativeCompatibleProfile>true</EnableDotNetNativeCompatibleProfile>
     <FileAlignment>512</FileAlignment>
@@ -142,6 +142,7 @@
     <Compile Include="Helpers\FaceServiceHelper.cs" />
     <Compile Include="Helpers\ImageAnalyzer.cs" />
     <Compile Include="Helpers\PhotoEvent.cs" />
+    <Compile Include="Helpers\PhotoHelper.cs" />
     <Compile Include="Helpers\TextAnalyticsHelper.cs" />
     <Compile Include="KioskExperiences.cs" />
     <Compile Include="Controls\CameraControl.xaml.cs">

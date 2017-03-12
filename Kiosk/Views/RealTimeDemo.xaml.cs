@@ -51,6 +51,7 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using Newtonsoft.Json;
 using System.Collections.ObjectModel;
+using Windows.ApplicationModel.Background;
 
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -171,7 +172,15 @@ namespace IntelligentKioskSample.Views
                 await e.DetectEmotionWithRectanglesAsync();
 
                 //Creating list of faces with summarized info for event hub message
-                List<FaceSendInfo> facesToSend = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, identifiedPersonsIdCollection);
+                List<FaceSendInfo> facesToSend;
+
+                if (SettingsHelper.Instance.ComplexIdentification)
+                    facesToSend = await e.IdentifyOrAddPersonWithEmotionsAsync(SettingsHelper.Instance.GroupName, identifiedPersonsIdCollection);
+                else
+                    //Simple face identification
+                    facesToSend = await e.FindSimilarPersonWithEmotion();
+
+
 
                 //Util.SendAMQPMessage(JsonConvert.SerializeObject(dfwes));
                 //Util.SendMessageToEventHub(JsonConvert.SerializeObject(dfwes));
@@ -219,24 +228,30 @@ namespace IntelligentKioskSample.Views
                     this.lastDetectedFaceSample = e.DetectedFaces;
                 }
 
-                var list = new List<Tuple<Face, IdentifiedPerson>>();
-                  
-                this.lastIdentifiedPersonSample = null;
-                foreach(var ip in e.IdentifiedPersons)
+                if (SettingsHelper.Instance.ComplexIdentification)
                 {
-                    list.Add(new Tuple<Face, IdentifiedPerson>(e.DetectedFaces.Where(fa => fa.FaceId == ip.FaceId).FirstOrDefault(), ip));
-                }
+                    var list = new List<Tuple<Face, IdentifiedPerson>>();
+
+                    this.lastIdentifiedPersonSample = null;
+                    foreach (var ip in e.IdentifiedPersons)
+                    {
+                        list.Add(new Tuple<Face, IdentifiedPerson>(e.DetectedFaces.Where(fa => fa.FaceId == ip.FaceId).FirstOrDefault(), ip));
+                    }
                     if (list.Any())
                         this.lastIdentifiedPersonSample = list;
+                }
+                else { 
 
-                //if (e.SimilarFaceMatches != null && !e.SimilarFaceMatches.Any())
-                //{
-                //    this.lastSimilarPersistedFaceSample = null;
-                //}
-                //else
-                //{
-                //    this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
-                //}
+                    if (e.SimilarFaceMatches != null && !e.SimilarFaceMatches.Any())
+                    {
+                        this.lastSimilarPersistedFaceSample = null;
+                    }
+                    else
+                    {
+                        this.lastSimilarPersistedFaceSample = e.SimilarFaceMatches;
+                        
+                    }
+                }
 
 
             }
@@ -257,6 +272,7 @@ namespace IntelligentKioskSample.Views
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
+
             EnterKioskMode();
 
             if (string.IsNullOrEmpty(SettingsHelper.Instance.EmotionApiKey) || string.IsNullOrEmpty(SettingsHelper.Instance.FaceApiKey))

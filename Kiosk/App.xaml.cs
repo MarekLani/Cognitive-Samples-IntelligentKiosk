@@ -44,9 +44,15 @@ namespace IntelligentKioskSample
     using Microsoft.EntityFrameworkCore;
     using ServiceHelpers;
     using System.Diagnostics;
+    using System.Linq;
+    using System.Threading.Tasks;
     using Views;
+    using Windows.ApplicationModel.ExtendedExecution;
     using Windows.Data.Xml.Dom;
+    using Windows.Devices.Enumeration;
+    using Windows.Media.Capture;
     using Windows.UI.Notifications;
+
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.
     /// </summary>
@@ -193,7 +199,60 @@ namespace IntelligentKioskSample
                 await (currentView as RealTimeDemo).HandleApplicationShutdownAsync();
             }
 
-            deferral.Complete();
+            using (var session = new ExtendedExecutionSession())
+            {
+                session.Reason = ExtendedExecutionReason.Unspecified;
+                session.Description = "Upload Data";
+                var result = await session.RequestExtensionAsync();
+                await Util.CallEventHubHttp("test");
+                if (result == ExtendedExecutionResult.Denied)
+                {
+                    await Util.CallEventHubHttp("denied");
+
+                }
+                else
+                {
+                    DeviceInformationCollection videoDevices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+
+                    if (!videoDevices.Any())
+                    {
+                        Debug.WriteLine("No cameras found.");
+                        await Util.CallEventHubHttp("no device");
+                    }
+                    else
+                    {
+                        DeviceInformation camera;
+                        if (SettingsHelper.Instance.CameraName == "")
+                            camera = videoDevices.FirstOrDefault();
+                        else
+                            camera = videoDevices.FirstOrDefault(c => c.Name == SettingsHelper.Instance.CameraName);
+
+                        if (camera == null)
+                            await Util.CallEventHubHttp("null");
+                        MediaCapture mediaCapture = new MediaCapture();
+
+                        MediaCaptureInitializationSettings mediaInitSettings = new MediaCaptureInitializationSettings
+                        {
+                            VideoDeviceId = camera.Id,
+                            PhotoCaptureSource = PhotoCaptureSource.VideoPreview
+                        };
+
+                        await mediaCapture.InitializeAsync(mediaInitSettings);
+                        //await SetMaxResolution(mediaCapture);
+
+                        PhotoHelper.camera = mediaCapture;
+                        while (true)
+                        {
+                            var stream = await PhotoHelper.TakePhoto();
+                            var faces = await FaceServiceHelper.DetectAsync(stream, true, true, ImageAnalyzer.DefaultFaceAttributeTypes);
+                            //Debug.WriteLine(faces.First().FaceId);
+                            await Util.CallEventHubHttp("working");
+                            await Task.Delay(1000);
+                        }
+                    }
+                }
+                deferral.Complete();
+            }
         }
     }
 }

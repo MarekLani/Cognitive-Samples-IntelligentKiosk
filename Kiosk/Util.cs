@@ -229,13 +229,15 @@ namespace IntelligentKioskSample
             var serviceNamespace = SettingsHelper.Instance.HubNamespace;
             var hubName = SettingsHelper.Instance.HubName;
             var baseAddress = new Uri(string.Format("https://{0}.servicebus.windows.net/", serviceNamespace));
+
+            //Test device is name of publisher
             var url = baseAddress + string.Format("{0}/publishers/testdevice/messages", hubName);
 
             // Create client.
             var httpClient = new HttpClient();
 
             if(sasToken == null)
-                sasToken = createToken(serviceNamespace, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
+                sasToken = createToken(url, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
 
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", sasToken);
 
@@ -248,7 +250,7 @@ namespace IntelligentKioskSample
             catch(Exception ex)
             {
                 sasToken = ex.Message;
-                sasToken = createToken(serviceNamespace, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
+                sasToken = createToken(url, SettingsHelper.Instance.HubKeyName, SettingsHelper.Instance.HubKey);
             }
         }
 

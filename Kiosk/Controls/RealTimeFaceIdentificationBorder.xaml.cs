@@ -61,7 +61,7 @@ namespace IntelligentKioskSample.Controls
             this.emotionEmojiControl.UpdateEmotion(scores);
         }
 
-        public void ShowIdentificationData(double age, string gender, uint confidence, string name = null, string uniqueId = null)
+        public void ShowIdentificationData(double age, string gender, uint confidence = 0, string name = null, string uniqueId = null)
         {
             int roundedAge = (int)Math.Round(age);
 

@@ -319,6 +319,9 @@ namespace IntelligentKioskSample.Controls
                                 // age, gender and id available
                                 faceBorder.ShowIdentificationData(detectedFace.FaceAttributes.Age, detectedFace.FaceAttributes.Gender, (uint)Math.Round(identifiedPerson.Confidence * 100), identifiedPerson.Person.Name, uniqueId: uniqueId);
                             }
+                            else if (uniqueId != null){
+                                faceBorder.ShowIdentificationData(detectedFace.FaceAttributes.Age, detectedFace.FaceAttributes.Gender, uniqueId: uniqueId);
+                            }
                             else
                             {
                                 // only age and gender available
