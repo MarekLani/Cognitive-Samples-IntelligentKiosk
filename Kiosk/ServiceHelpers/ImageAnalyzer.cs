@@ -418,10 +418,10 @@ namespace ServiceHelpers
                                     {
                                         //create new Guy if confidence not sufficient
                                         SimilarFaceMatch result = await GetSimilarFace(f);
-                                        using (var db = new KioskDbContext())
-                                        {
-                                            Blogs.ItemsSource = db.Blogs.ToList();
-                                        }
+                                        //using (var db = new KioskDbContext())
+                                        //{
+                                        //    Blogs.ItemsSource = db.Blogs.ToList();
+                                        //}
 
                                         await CreatePerson(facesInfo, newPersonID, f);
                                     }
